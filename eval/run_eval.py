@@ -195,7 +195,7 @@ async def main() -> None:
 
     try:
         results = await run_evaluation(models, judge)
-        save_results(results, f"eval_results_{settings.frontier_model_name.replace('.', '')}.json")
+        save_results(results)
         logger.info("Evaluation complete: %d total results", len(results))
     finally:
         for model in models.values():

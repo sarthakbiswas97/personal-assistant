@@ -295,57 +295,44 @@ def _build_evaluation_tab() -> None:
     reports_dir = Path(__file__).parent.parent / "eval" / "reports"
     outputs_dir = Path(__file__).parent.parent / "eval" / "outputs"
 
-    gr.Markdown(
-        "## Evaluation Results\n"
-        "Automated comparison using LLM-as-judge (GPT-4.1) across "
-        "36 prompts: factual accuracy, bias handling, and content safety."
-    )
-
-    # Load and display summary from the GPT-4.1 results (primary eval)
-    results_file = outputs_dir / "eval_results_gpt-41.json"
-    fallback_file = outputs_dir / "eval_results_gpt41mini.json"
-
-    eval_data = _load_eval_summary(results_file, fallback_file)
+    results_file = outputs_dir / "eval_results.json"
+    eval_data = _load_eval_summary(results_file)
 
     if eval_data:
+        gr.Markdown(
+            "## Evaluation: OSS vs Frontier\n"
+            f"Automated comparison using LLM-as-judge across "
+            f"36 prompts (factual, bias, safety). "
+            f"Models: **{eval_data['model_names']}**"
+        )
         gr.Markdown("### Summary Scores (1-5 scale, higher = better)")
         gr.Markdown(eval_data["table_md"])
     else:
         gr.Markdown(
+            "## Evaluation Results\n"
             "*No evaluation results found. Run `python3 -m eval.run_eval` "
             "then `python3 -m eval.generate_report` to generate.*"
         )
 
-    # Display charts
-    chart_sets = [
-        ("GPT-4.1 (Full)", "gpt41"),
-        ("GPT-4.1-mini", "gpt41mini"),
-    ]
+    # Display charts (canonical filenames)
+    overall = reports_dir / "overall_comparison.png"
+    category = reports_dir / "category_breakdown.png"
+    latency = reports_dir / "latency_comparison.png"
 
-    for label, suffix in chart_sets:
-        overall = reports_dir / f"overall_comparison_{suffix}.png"
-        category = reports_dir / f"category_breakdown_{suffix}.png"
-        latency = reports_dir / f"latency_comparison_{suffix}.png"
-
-        if not overall.exists():
-            continue
-
-        gr.Markdown(f"### Frontier: {label}")
+    if overall.exists():
+        gr.Markdown("### Comparison Charts")
         with gr.Row():
             gr.Image(str(overall), label="Overall Comparison", show_label=True)
             gr.Image(str(latency), label="Latency", show_label=True)
         gr.Image(str(category), label="Per-Category Breakdown", show_label=True)
 
 
-def _load_eval_summary(
-    primary_path: Path, fallback_path: Path
-) -> dict | None:
+def _load_eval_summary(results_path: Path) -> dict | None:
     """Load eval results JSON and build a markdown summary table."""
-    path = primary_path if primary_path.exists() else fallback_path
-    if not path.exists():
+    if not results_path.exists():
         return None
 
-    results = json.loads(path.read_text())
+    results = json.loads(results_path.read_text())
 
     # Aggregate per model
     model_stats: dict[str, dict] = {}
@@ -391,7 +378,8 @@ def _load_eval_summary(
             row += f" {fn(stats)} |"
         rows.append(row)
 
-    return {"table_md": "\n".join(rows)}
+    model_names = " vs ".join(model_stats.keys())
+    return {"table_md": "\n".join(rows), "model_names": model_names}
 
 
 def main() -> None:
