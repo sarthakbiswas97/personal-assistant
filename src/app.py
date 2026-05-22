@@ -115,14 +115,19 @@ async def arena_respond(
     message: str,
     oss_history: list[dict],
     frontier_history: list[dict],
-) -> tuple[str, list[dict], str, list[dict], str]:
-    """Handle arena mode: both models respond to the same prompt.
+):
+    """Handle arena mode: both models respond independently.
 
-    Returns:
+    Fires both requests simultaneously. Whichever model responds first
+    gets displayed first. Each model's latency is measured independently
+    from request to response.
+
+    Yields:
         Tuple of (cleared_input, oss_history, oss_status, frontier_history, frontier_status).
     """
     if not message.strip():
-        return "", oss_history, "", frontier_history, ""
+        yield "", oss_history, "", frontier_history, ""
+        return
 
     # Input guardrails
     input_check = check_input(message)
@@ -136,26 +141,49 @@ async def arena_respond(
             {"role": "user", "content": message},
             {"role": "assistant", "content": blocked_msg},
         ]
-        return "", oss_history, "Blocked by guardrails", frontier_history, "Blocked by guardrails"
+        yield "", oss_history, "Blocked by guardrails", frontier_history, "Blocked by guardrails"
+        return
 
     # Add user message to both histories
     oss_history = oss_history + [{"role": "user", "content": message}]
     frontier_history = frontier_history + [{"role": "user", "content": message}]
 
-    # Run both models concurrently
+    # Show "thinking" state immediately
+    oss_status = "Generating..."
+    frontier_status = "Generating..."
+    yield "", oss_history, oss_status, frontier_history, frontier_status
+
+    # Fire both requests at the same time
     oss_task = asyncio.create_task(_generate_full_response(MODEL_OSS, message))
     frontier_task = asyncio.create_task(_generate_full_response(MODEL_FRONTIER, message))
 
-    oss_response, oss_latency = await oss_task
-    frontier_response, frontier_latency = await frontier_task
+    # Track completion state
+    oss_done = False
+    frontier_done = False
+    oss_result_history = oss_history
+    frontier_result_history = frontier_history
 
-    oss_history = oss_history + [{"role": "assistant", "content": oss_response}]
-    frontier_history = frontier_history + [{"role": "assistant", "content": frontier_response}]
+    # Poll until both are done — yield as each completes
+    while not (oss_done and frontier_done):
+        done, _ = await asyncio.wait(
+            [t for t in [oss_task, frontier_task] if not t.done()],
+            timeout=0.1,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
 
-    oss_status = f"Latency: {oss_latency:.0f}ms"
-    frontier_status = f"Latency: {frontier_latency:.0f}ms"
+        if not oss_done and oss_task.done():
+            oss_response, oss_latency = oss_task.result()
+            oss_result_history = oss_history + [{"role": "assistant", "content": oss_response}]
+            oss_status = f"Latency: {oss_latency:.0f}ms"
+            oss_done = True
+            yield "", oss_result_history, oss_status, frontier_result_history, frontier_status
 
-    return "", oss_history, oss_status, frontier_history, frontier_status
+        if not frontier_done and frontier_task.done():
+            frontier_response, frontier_latency = frontier_task.result()
+            frontier_result_history = frontier_history + [{"role": "assistant", "content": frontier_response}]
+            frontier_status = f"Latency: {frontier_latency:.0f}ms"
+            frontier_done = True
+            yield "", oss_result_history, oss_status, frontier_result_history, frontier_status
 
 
 def clear_arena() -> tuple[list, str, list, str]:
