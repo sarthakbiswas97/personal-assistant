@@ -182,9 +182,10 @@ async def main() -> None:
     from src.models.frontier_model import FrontierModel
     from src.models.oss_model import OSSModel
 
+    frontier_label = f"Frontier ({settings.frontier_model_name})"
     models: dict[str, BaseModel] = {
         "OSS (Qwen2.5-0.5B)": OSSModel(model_name=settings.oss_model_name),
-        "Frontier (GPT-4.1-mini)": FrontierModel(
+        frontier_label: FrontierModel(
             api_key=settings.openai_api_key,
             model_name=settings.frontier_model_name,
         ),
@@ -194,7 +195,7 @@ async def main() -> None:
 
     try:
         results = await run_evaluation(models, judge)
-        save_results(results)
+        save_results(results, f"eval_results_{settings.frontier_model_name.replace('.', '')}.json")
         logger.info("Evaluation complete: %d total results", len(results))
     finally:
         for model in models.values():
