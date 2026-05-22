@@ -67,12 +67,17 @@ class OSSModel(BaseModel):
         thread = Thread(target=self._run_generation, args=(generation_kwargs,))
         thread.start()
 
+        # Read tokens from the streamer's queue without blocking the event loop.
+        # streamer.text_queue.get() is blocking, so we offload each call to
+        # a thread executor. This lets other async tasks (e.g. the frontier
+        # model in arena mode) run while we wait for the next token.
         loop = asyncio.get_running_loop()
-        for token in streamer:
+        while True:
+            token = await loop.run_in_executor(None, streamer.text_queue.get)
+            if token is streamer.stop_signal:
+                break
             if token:
                 yield token
-            # Yield control back to the event loop between tokens
-            await asyncio.sleep(0)
 
         await loop.run_in_executor(None, thread.join)
 
