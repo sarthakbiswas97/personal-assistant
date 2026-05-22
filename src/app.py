@@ -111,64 +111,41 @@ async def _generate_full_response(model_key: str, message: str) -> tuple[str, fl
 # -- Arena handler --
 
 
-async def arena_respond(
+async def _arena_single_model(
     message: str,
-    oss_history: list[dict],
-    frontier_history: list[dict],
-):
-    """Handle arena mode: both models respond independently.
+    history: list[dict],
+    model_key: str,
+) -> tuple[list[dict], str]:
+    """Handle one model's response in arena mode.
 
-    Fires both requests at the same time. Yields a UI update each time
-    a model finishes, so the faster model's response appears first.
+    Runs as an independent Gradio event handler with its own
+    concurrency lane, so it updates its chatbot independently.
     """
     if not message.strip():
-        yield "", oss_history, "", frontier_history, ""
-        return
+        return history, ""
 
-    # Input guardrails
     input_check = check_input(message)
     if input_check.is_blocked:
-        blocked_msg = input_check.reason
-        oss_history = oss_history + [
+        history = history + [
             {"role": "user", "content": message},
-            {"role": "assistant", "content": blocked_msg},
+            {"role": "assistant", "content": input_check.reason},
         ]
-        frontier_history = frontier_history + [
-            {"role": "user", "content": message},
-            {"role": "assistant", "content": blocked_msg},
-        ]
-        yield "", oss_history, "Blocked by guardrails", frontier_history, "Blocked by guardrails"
-        return
+        return history, "Blocked by guardrails"
 
-    # Show user messages + generating state immediately
-    oss_history = oss_history + [{"role": "user", "content": message}]
-    frontier_history = frontier_history + [{"role": "user", "content": message}]
-    yield "", oss_history, "Generating...", frontier_history, "Generating..."
+    history = history + [{"role": "user", "content": message}]
+    response, latency_ms = await _generate_full_response(model_key, message)
+    history = history + [{"role": "assistant", "content": response}]
+    return history, f"Latency: {latency_ms:.0f}ms"
 
-    # Fire both at the same time
-    oss_task = asyncio.create_task(_generate_full_response(MODEL_OSS, message))
-    frontier_task = asyncio.create_task(_generate_full_response(MODEL_FRONTIER, message))
 
-    pending = {oss_task, frontier_task}
-    oss_result_history = oss_history
-    frontier_result_history = frontier_history
-    oss_status = "Generating..."
-    frontier_status = "Generating..."
+async def arena_oss(message: str, history: list[dict]) -> tuple[list[dict], str]:
+    """Independent OSS handler for arena."""
+    return await _arena_single_model(message, history, MODEL_OSS)
 
-    while pending:
-        done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
 
-        for task in done:
-            if task is oss_task:
-                oss_response, oss_latency = task.result()
-                oss_result_history = oss_history + [{"role": "assistant", "content": oss_response}]
-                oss_status = f"Latency: {oss_latency:.0f}ms"
-            elif task is frontier_task:
-                frontier_response, frontier_latency = task.result()
-                frontier_result_history = frontier_history + [{"role": "assistant", "content": frontier_response}]
-                frontier_status = f"Latency: {frontier_latency:.0f}ms"
-
-        yield "", oss_result_history, oss_status, frontier_result_history, frontier_status
+async def arena_frontier(message: str, history: list[dict]) -> tuple[list[dict], str]:
+    """Independent frontier handler for arena."""
+    return await _arena_single_model(message, history, MODEL_FRONTIER)
 
 
 def clear_arena() -> tuple[str, list, str, list, str]:
@@ -267,17 +244,31 @@ def create_app() -> gr.Blocks:
 
                 arena_clear = gr.Button("Clear conversation")
 
-                # Wire up arena events
-                arena_submit.click(
-                    fn=arena_respond,
-                    inputs=[arena_input, oss_chatbot, frontier_chatbot],
-                    outputs=[arena_input, oss_chatbot, oss_status, frontier_chatbot, frontier_status],
-                )
-                arena_input.submit(
-                    fn=arena_respond,
-                    inputs=[arena_input, oss_chatbot, frontier_chatbot],
-                    outputs=[arena_input, oss_chatbot, oss_status, frontier_chatbot, frontier_status],
-                )
+                # Wire up arena events.
+                # Two independent handlers per trigger, each in its own
+                # concurrency lane. Gradio runs them in parallel and each
+                # sends its own SSE stream, so the faster model's chatbot
+                # updates first.
+                for trigger in [arena_submit.click, arena_input.submit]:
+                    # Clear input immediately
+                    trigger(fn=lambda: "", outputs=[arena_input])
+                    # OSS — own concurrency lane
+                    trigger(
+                        fn=arena_oss,
+                        inputs=[arena_input, oss_chatbot],
+                        outputs=[oss_chatbot, oss_status],
+                        concurrency_id="arena_oss",
+                        concurrency_limit=1,
+                    )
+                    # Frontier — own concurrency lane
+                    trigger(
+                        fn=arena_frontier,
+                        inputs=[arena_input, frontier_chatbot],
+                        outputs=[frontier_chatbot, frontier_status],
+                        concurrency_id="arena_frontier",
+                        concurrency_limit=1,
+                    )
+
                 arena_clear.click(
                     fn=clear_arena,
                     outputs=[arena_input, oss_chatbot, oss_status, frontier_chatbot, frontier_status],
