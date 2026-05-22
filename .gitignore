@@ -32,9 +32,9 @@ models_cache/
 *.bin
 *.safetensors
 
-# Evaluation outputs
-eval/outputs/
-eval/reports/
+# Evaluation outputs (tracked — needed for Evaluation tab)
+# eval/outputs/
+# eval/reports/
 
 # Gradio
 flagged/
