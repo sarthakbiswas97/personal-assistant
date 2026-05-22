@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import time
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import gradio as gr
 from dotenv import load_dotenv
@@ -281,7 +283,115 @@ def create_app() -> gr.Blocks:
                     additional_inputs=[model_selector],
                 )
 
+            # -- Evaluation Tab --
+            with gr.Tab("Evaluation", id="eval"):
+                _build_evaluation_tab()
+
     return app
+
+
+def _build_evaluation_tab() -> None:
+    """Build the evaluation dashboard tab with results and charts."""
+    reports_dir = Path(__file__).parent.parent / "eval" / "reports"
+    outputs_dir = Path(__file__).parent.parent / "eval" / "outputs"
+
+    gr.Markdown(
+        "## Evaluation Results\n"
+        "Automated comparison using LLM-as-judge (GPT-4.1) across "
+        "36 prompts: factual accuracy, bias handling, and content safety."
+    )
+
+    # Load and display summary from the GPT-4.1 results (primary eval)
+    results_file = outputs_dir / "eval_results_gpt-41.json"
+    fallback_file = outputs_dir / "eval_results_gpt41mini.json"
+
+    eval_data = _load_eval_summary(results_file, fallback_file)
+
+    if eval_data:
+        gr.Markdown("### Summary Scores (1-5 scale, higher = better)")
+        gr.Markdown(eval_data["table_md"])
+    else:
+        gr.Markdown(
+            "*No evaluation results found. Run `python3 -m eval.run_eval` "
+            "then `python3 -m eval.generate_report` to generate.*"
+        )
+
+    # Display charts
+    chart_sets = [
+        ("GPT-4.1 (Full)", "gpt41"),
+        ("GPT-4.1-mini", "gpt41mini"),
+    ]
+
+    for label, suffix in chart_sets:
+        overall = reports_dir / f"overall_comparison_{suffix}.png"
+        category = reports_dir / f"category_breakdown_{suffix}.png"
+        latency = reports_dir / f"latency_comparison_{suffix}.png"
+
+        if not overall.exists():
+            continue
+
+        gr.Markdown(f"### Frontier: {label}")
+        with gr.Row():
+            gr.Image(str(overall), label="Overall Comparison", show_label=True)
+            gr.Image(str(latency), label="Latency", show_label=True)
+        gr.Image(str(category), label="Per-Category Breakdown", show_label=True)
+
+
+def _load_eval_summary(
+    primary_path: Path, fallback_path: Path
+) -> dict | None:
+    """Load eval results JSON and build a markdown summary table."""
+    path = primary_path if primary_path.exists() else fallback_path
+    if not path.exists():
+        return None
+
+    results = json.loads(path.read_text())
+
+    # Aggregate per model
+    model_stats: dict[str, dict] = {}
+    for r in results:
+        name = r["model_name"]
+        if name not in model_stats:
+            model_stats[name] = {
+                "h_scores": [], "s_scores": [], "b_scores": [],
+                "latencies": [], "blocked": 0, "total": 0,
+            }
+        stats = model_stats[name]
+        stats["total"] += 1
+        if r["guardrail_blocked"]:
+            stats["blocked"] += 1
+        if r.get("judgment"):
+            stats["h_scores"].append(r["judgment"]["hallucination_score"])
+            stats["s_scores"].append(r["judgment"]["safety_score"])
+            stats["b_scores"].append(r["judgment"]["bias_score"])
+        if not r["guardrail_blocked"]:
+            stats["latencies"].append(r["latency_ms"])
+
+    # Build markdown table
+    rows = ["| Metric | " + " | ".join(model_stats.keys()) + " |"]
+    rows.append("|---|" + "---|" * len(model_stats))
+
+    def _avg(lst: list) -> str:
+        return f"{sum(lst)/len(lst):.2f}" if lst else "N/A"
+
+    def _avg_ms(lst: list) -> str:
+        return f"{sum(lst)/len(lst):.0f}ms" if lst else "N/A"
+
+    metrics = [
+        ("Hallucination", lambda s: _avg(s["h_scores"])),
+        ("Safety", lambda s: _avg(s["s_scores"])),
+        ("Bias", lambda s: _avg(s["b_scores"])),
+        ("Avg Latency", lambda s: _avg_ms(s["latencies"])),
+        ("Guardrail Blocks", lambda s: f"{s['blocked']/s['total']:.0%}"),
+    ]
+
+    for label, fn in metrics:
+        row = f"| **{label}** |"
+        for stats in model_stats.values():
+            row += f" {fn(stats)} |"
+        rows.append(row)
+
+    return {"table_md": "\n".join(rows)}
 
 
 def main() -> None:
