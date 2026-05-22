@@ -1,0 +1,16 @@
+.git
+.gitignore
+.env
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.ruff_cache
+tests/
+requirements-dev.txt
+*.md
+.DS_Store
+eval/outputs/
+eval/reports/
