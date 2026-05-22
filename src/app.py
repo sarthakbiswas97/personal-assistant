@@ -118,12 +118,8 @@ async def arena_respond(
 ):
     """Handle arena mode: both models respond independently.
 
-    Fires both requests simultaneously. Whichever model responds first
-    gets displayed first. Each model's latency is measured independently
-    from request to response.
-
-    Yields:
-        Tuple of (cleared_input, oss_history, oss_status, frontier_history, frontier_status).
+    Fires both requests at the same time. Yields a UI update each time
+    a model finishes, so the faster model's response appears first.
     """
     if not message.strip():
         yield "", oss_history, "", frontier_history, ""
@@ -144,54 +140,43 @@ async def arena_respond(
         yield "", oss_history, "Blocked by guardrails", frontier_history, "Blocked by guardrails"
         return
 
-    # Add user message to both histories
+    # Show user messages + generating state immediately
     oss_history = oss_history + [{"role": "user", "content": message}]
     frontier_history = frontier_history + [{"role": "user", "content": message}]
+    yield "", oss_history, "Generating...", frontier_history, "Generating..."
 
-    # Show "thinking" state immediately
-    oss_status = "Generating..."
-    frontier_status = "Generating..."
-    yield "", oss_history, oss_status, frontier_history, frontier_status
-
-    # Fire both requests at the same time
+    # Fire both at the same time
     oss_task = asyncio.create_task(_generate_full_response(MODEL_OSS, message))
     frontier_task = asyncio.create_task(_generate_full_response(MODEL_FRONTIER, message))
 
-    # Track completion state
-    oss_done = False
-    frontier_done = False
+    pending = {oss_task, frontier_task}
     oss_result_history = oss_history
     frontier_result_history = frontier_history
+    oss_status = "Generating..."
+    frontier_status = "Generating..."
 
-    # Poll until both are done — yield as each completes
-    while not (oss_done and frontier_done):
-        done, _ = await asyncio.wait(
-            [t for t in [oss_task, frontier_task] if not t.done()],
-            timeout=0.1,
-            return_when=asyncio.FIRST_COMPLETED,
-        )
+    while pending:
+        done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
 
-        if not oss_done and oss_task.done():
-            oss_response, oss_latency = oss_task.result()
-            oss_result_history = oss_history + [{"role": "assistant", "content": oss_response}]
-            oss_status = f"Latency: {oss_latency:.0f}ms"
-            oss_done = True
-            yield "", oss_result_history, oss_status, frontier_result_history, frontier_status
+        for task in done:
+            if task is oss_task:
+                oss_response, oss_latency = task.result()
+                oss_result_history = oss_history + [{"role": "assistant", "content": oss_response}]
+                oss_status = f"Latency: {oss_latency:.0f}ms"
+            elif task is frontier_task:
+                frontier_response, frontier_latency = task.result()
+                frontier_result_history = frontier_history + [{"role": "assistant", "content": frontier_response}]
+                frontier_status = f"Latency: {frontier_latency:.0f}ms"
 
-        if not frontier_done and frontier_task.done():
-            frontier_response, frontier_latency = frontier_task.result()
-            frontier_result_history = frontier_history + [{"role": "assistant", "content": frontier_response}]
-            frontier_status = f"Latency: {frontier_latency:.0f}ms"
-            frontier_done = True
-            yield "", oss_result_history, oss_status, frontier_result_history, frontier_status
+        yield "", oss_result_history, oss_status, frontier_result_history, frontier_status
 
 
-def clear_arena() -> tuple[list, str, list, str]:
+def clear_arena() -> tuple[str, list, str, list, str]:
     """Clear both chat histories and reset memory."""
     for key in list(_memories.keys()):
         if key.startswith("default_"):
             _memories[key].reset()
-    return [], "", [], ""
+    return "", [], "", [], ""
 
 
 # -- Single model chat handler (for individual tab) --
@@ -283,7 +268,7 @@ def create_app() -> gr.Blocks:
                 arena_clear = gr.Button("Clear conversation")
 
                 # Wire up arena events
-                arena_submit_event = arena_submit.click(
+                arena_submit.click(
                     fn=arena_respond,
                     inputs=[arena_input, oss_chatbot, frontier_chatbot],
                     outputs=[arena_input, oss_chatbot, oss_status, frontier_chatbot, frontier_status],
@@ -295,7 +280,7 @@ def create_app() -> gr.Blocks:
                 )
                 arena_clear.click(
                     fn=clear_arena,
-                    outputs=[oss_chatbot, oss_status, frontier_chatbot, frontier_status],
+                    outputs=[arena_input, oss_chatbot, oss_status, frontier_chatbot, frontier_status],
                 )
 
             # -- Single Model Tab --
