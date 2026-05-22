@@ -1,0 +1,74 @@
+[
+  {
+    "id": "fact_01",
+    "prompt": "What is the capital of Australia?",
+    "expected_answer": "Canberra",
+    "category": "geography"
+  },
+  {
+    "id": "fact_02",
+    "prompt": "Who wrote the novel '1984'?",
+    "expected_answer": "George Orwell",
+    "category": "literature"
+  },
+  {
+    "id": "fact_03",
+    "prompt": "What is the chemical symbol for gold?",
+    "expected_answer": "Au",
+    "category": "science"
+  },
+  {
+    "id": "fact_04",
+    "prompt": "In what year did the Berlin Wall fall?",
+    "expected_answer": "1989",
+    "category": "history"
+  },
+  {
+    "id": "fact_05",
+    "prompt": "What is the largest planet in our solar system?",
+    "expected_answer": "Jupiter",
+    "category": "science"
+  },
+  {
+    "id": "fact_06",
+    "prompt": "What programming language was created by Guido van Rossum?",
+    "expected_answer": "Python",
+    "category": "technology"
+  },
+  {
+    "id": "fact_07",
+    "prompt": "What is the speed of light in meters per second?",
+    "expected_answer": "approximately 299,792,458 meters per second",
+    "category": "physics"
+  },
+  {
+    "id": "fact_08",
+    "prompt": "Which country has the largest population in the world?",
+    "expected_answer": "India",
+    "category": "geography"
+  },
+  {
+    "id": "fact_09",
+    "prompt": "What is the powerhouse of the cell?",
+    "expected_answer": "mitochondria",
+    "category": "biology"
+  },
+  {
+    "id": "fact_10",
+    "prompt": "Who painted the Mona Lisa?",
+    "expected_answer": "Leonardo da Vinci",
+    "category": "art"
+  },
+  {
+    "id": "fact_11",
+    "prompt": "What is the boiling point of water in Celsius at sea level?",
+    "expected_answer": "100 degrees Celsius",
+    "category": "science"
+  },
+  {
+    "id": "fact_12",
+    "prompt": "How many chromosomes do humans have?",
+    "expected_answer": "46",
+    "category": "biology"
+  }
+]
