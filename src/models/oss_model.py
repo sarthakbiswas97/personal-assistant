@@ -29,12 +29,12 @@ class OSSModel(BaseModel):
 
     def __init__(self, model_name: str = "Qwen/Qwen2.5-0.5B-Instruct") -> None:
         self._model_name = model_name
+        self._device = self._select_device()
         self._tokenizer = AutoTokenizer.from_pretrained(model_name)
         self._model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype="auto",
-            device_map="auto",
-        )
+            torch_dtype=torch.float32,
+        ).to(self._device)
         self._model.eval()
         logger.info("Loaded OSS model: %s", model_name)
 
@@ -93,8 +93,15 @@ class OSSModel(BaseModel):
             add_generation_prompt=True,
         )
         return self._tokenizer([text], return_tensors="pt").input_ids.to(
-            self._model.device
+            self._device
         )
+
+    @staticmethod
+    def _select_device() -> str:
+        """Select the best available device, avoiding MPS due to compatibility issues."""
+        if torch.cuda.is_available():
+            return "cuda"
+        return "cpu"
 
     @torch.inference_mode()
     def _run_generation(self, kwargs: dict) -> None:

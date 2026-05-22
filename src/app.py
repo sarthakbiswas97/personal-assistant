@@ -160,7 +160,6 @@ def create_app() -> gr.Blocks:
         gr.ChatInterface(
             fn=respond,
             additional_inputs=[model_selector],
-            type="messages",
         )
 
     return app
