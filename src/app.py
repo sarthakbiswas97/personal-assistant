@@ -1,10 +1,11 @@
-"""Gradio web UI for the AI personal assistant."""
+"""Gradio web UI for the AI personal assistant with arena mode."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
+import time
 from collections.abc import AsyncIterator
 
 import gradio as gr
@@ -23,6 +24,9 @@ load_dotenv()
 
 _models: dict[str, BaseModel] = {}
 
+MODEL_OSS = "OSS (Qwen2.5-0.5B)"
+MODEL_FRONTIER = "Frontier (OpenAI)"
+
 
 def _get_or_create_model(model_key: str) -> BaseModel:
     """Lazy-load and cache model backends."""
@@ -31,7 +35,7 @@ def _get_or_create_model(model_key: str) -> BaseModel:
 
     settings = load_settings()
 
-    if model_key == "Frontier (OpenAI)":
+    if model_key == MODEL_FRONTIER:
         from src.models.frontier_model import FrontierModel
 
         if not settings.openai_api_key:
@@ -40,7 +44,7 @@ def _get_or_create_model(model_key: str) -> BaseModel:
             api_key=settings.openai_api_key,
             model_name=settings.frontier_model_name,
         )
-    elif model_key == "OSS (Qwen2.5-0.5B)":
+    elif model_key == MODEL_OSS:
         from src.models.oss_model import OSSModel
 
         _models[model_key] = OSSModel(model_name=settings.oss_model_name)
@@ -73,22 +77,94 @@ def _get_memory(session_id: str) -> ConversationMemory:
     return _memories[session_id]
 
 
-# -- Chat handler --
+# -- Single model response (used by both modes) --
 
 
-async def _stream_response(
-    model: BaseModel, messages: list[Message]
-) -> AsyncIterator[str]:
-    """Stream model response with output guardrail check."""
-    full_response = ""
-    async for token in model.stream(messages):
-        full_response += token
-        yield token
+async def _generate_full_response(model_key: str, message: str) -> tuple[str, float]:
+    """Generate a full response and measure latency.
 
-    # Check complete response against output guardrails
-    output_check = check_output(full_response)
+    Returns:
+        Tuple of (response_text, latency_ms).
+    """
+    memory = _get_memory(f"default_{model_key}")
+    memory.add_user_message(message)
+    snapshot = memory.get_snapshot()
+    messages = snapshot.to_message_list()
+
+    model = _get_or_create_model(model_key)
+
+    start = time.perf_counter()
+    response = await model.generate(messages)
+    latency_ms = (time.perf_counter() - start) * 1000
+
+    # Output guardrail check
+    output_check = check_output(response)
     if output_check.is_blocked:
-        yield f"\n\n[Response filtered: {output_check.reason}]"
+        response = f"[Response filtered: {output_check.reason}]"
+
+    memory.add_assistant_message(response)
+    return response, latency_ms
+
+
+# -- Arena handler --
+
+
+async def arena_respond(
+    message: str,
+    oss_history: list[dict],
+    frontier_history: list[dict],
+) -> tuple[str, list[dict], str, list[dict], str]:
+    """Handle arena mode: both models respond to the same prompt.
+
+    Returns:
+        Tuple of (cleared_input, oss_history, oss_status, frontier_history, frontier_status).
+    """
+    if not message.strip():
+        return "", oss_history, "", frontier_history, ""
+
+    # Input guardrails
+    input_check = check_input(message)
+    if input_check.is_blocked:
+        blocked_msg = input_check.reason
+        oss_history = oss_history + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": blocked_msg},
+        ]
+        frontier_history = frontier_history + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": blocked_msg},
+        ]
+        return "", oss_history, "Blocked by guardrails", frontier_history, "Blocked by guardrails"
+
+    # Add user message to both histories
+    oss_history = oss_history + [{"role": "user", "content": message}]
+    frontier_history = frontier_history + [{"role": "user", "content": message}]
+
+    # Run both models concurrently
+    oss_task = asyncio.create_task(_generate_full_response(MODEL_OSS, message))
+    frontier_task = asyncio.create_task(_generate_full_response(MODEL_FRONTIER, message))
+
+    oss_response, oss_latency = await oss_task
+    frontier_response, frontier_latency = await frontier_task
+
+    oss_history = oss_history + [{"role": "assistant", "content": oss_response}]
+    frontier_history = frontier_history + [{"role": "assistant", "content": frontier_response}]
+
+    oss_status = f"Latency: {oss_latency:.0f}ms"
+    frontier_status = f"Latency: {frontier_latency:.0f}ms"
+
+    return "", oss_history, oss_status, frontier_history, frontier_status
+
+
+def clear_arena() -> tuple[list, str, list, str]:
+    """Clear both chat histories and reset memory."""
+    for key in list(_memories.keys()):
+        if key.startswith("default_"):
+            _memories[key].reset()
+    return [], "", [], ""
+
+
+# -- Single model chat handler (for individual tab) --
 
 
 async def respond(
@@ -96,40 +172,29 @@ async def respond(
     history: list[dict],
     model_choice: str,
 ) -> AsyncIterator[str]:
-    """Handle a chat message with guardrails, memory, and streaming.
-
-    Args:
-        message: User's input text.
-        history: Gradio-managed conversation history.
-        model_choice: Selected model backend key.
-
-    Yields:
-        Streamed response text chunks.
-    """
-    # Input guardrails
+    """Handle a single-model chat message with streaming."""
     input_check = check_input(message)
     if input_check.is_blocked:
         yield input_check.reason
         return
 
-    # Build session key from model choice (simple approach for single-user)
     session_id = f"default_{model_choice}"
     memory = _get_memory(session_id)
-
-    # Record user message and get snapshot for model
     memory.add_user_message(message)
     snapshot = memory.get_snapshot()
     messages = snapshot.to_message_list()
 
-    # Get model and stream response
     model = _get_or_create_model(model_choice)
     full_response = ""
 
-    async for chunk in _stream_response(model, messages):
-        full_response += chunk
+    async for token in model.stream(messages):
+        full_response += token
         yield full_response
 
-    # Record assistant response in memory
+    output_check = check_output(full_response)
+    if output_check.is_blocked:
+        yield f"{full_response}\n\n[Response filtered: {output_check.reason}]"
+
     memory.add_assistant_message(full_response)
 
 
@@ -138,29 +203,83 @@ async def respond(
 
 def create_app() -> gr.Blocks:
     """Build and return the Gradio application."""
-    model_choices = ["OSS (Qwen2.5-0.5B)", "Frontier (OpenAI)"]
+    model_choices = [MODEL_OSS, MODEL_FRONTIER]
+    default_model = MODEL_FRONTIER if os.getenv("OPENAI_API_KEY") else MODEL_OSS
 
-    # Default to OSS if no API key is set
-    default_model = (
-        "Frontier (OpenAI)"
-        if os.getenv("OPENAI_API_KEY")
-        else "OSS (Qwen2.5-0.5B)"
-    )
-
-    with gr.Blocks(title="AI Personal Assistant") as app:
-        gr.Markdown("# AI Personal Assistant\nCompare OSS and Frontier models side by side.")
-
-        model_selector = gr.Dropdown(
-            choices=model_choices,
-            value=default_model,
-            label="Model",
-            interactive=True,
+    with gr.Blocks(title="AI Assistant Arena") as app:
+        gr.Markdown(
+            "# AI Assistant Arena\n"
+            "Compare **OSS (Qwen2.5-0.5B)** vs **Frontier (OpenAI GPT-4.1)** side by side."
         )
 
-        gr.ChatInterface(
-            fn=respond,
-            additional_inputs=[model_selector],
-        )
+        with gr.Tabs():
+            # -- Arena Tab --
+            with gr.Tab("Arena", id="arena"):
+                gr.Markdown(
+                    "Send a message and both models respond simultaneously. "
+                    "Compare quality, style, and latency in real time."
+                )
+
+                with gr.Row(equal_height=True):
+                    with gr.Column():
+                        gr.Markdown("### OSS (Qwen2.5-0.5B)")
+                        oss_chatbot = gr.Chatbot(
+                            height=450,
+                            label="OSS Model",
+    
+
+                        )
+                        oss_status = gr.Markdown("")
+
+                    with gr.Column():
+                        gr.Markdown("### Frontier (OpenAI)")
+                        frontier_chatbot = gr.Chatbot(
+                            height=450,
+                            label="Frontier Model",
+    
+
+                        )
+                        frontier_status = gr.Markdown("")
+
+                with gr.Row():
+                    arena_input = gr.Textbox(
+                        placeholder="Type a message to compare both models...",
+                        label="Your message",
+                        scale=4,
+                        container=False,
+                    )
+                    arena_submit = gr.Button("Send", variant="primary", scale=1)
+
+                arena_clear = gr.Button("Clear conversation")
+
+                # Wire up arena events
+                arena_submit_event = arena_submit.click(
+                    fn=arena_respond,
+                    inputs=[arena_input, oss_chatbot, frontier_chatbot],
+                    outputs=[arena_input, oss_chatbot, oss_status, frontier_chatbot, frontier_status],
+                )
+                arena_input.submit(
+                    fn=arena_respond,
+                    inputs=[arena_input, oss_chatbot, frontier_chatbot],
+                    outputs=[arena_input, oss_chatbot, oss_status, frontier_chatbot, frontier_status],
+                )
+                arena_clear.click(
+                    fn=clear_arena,
+                    outputs=[oss_chatbot, oss_status, frontier_chatbot, frontier_status],
+                )
+
+            # -- Single Model Tab --
+            with gr.Tab("Single Model", id="single"):
+                model_selector = gr.Dropdown(
+                    choices=model_choices,
+                    value=default_model,
+                    label="Model",
+                    interactive=True,
+                )
+                gr.ChatInterface(
+                    fn=respond,
+                    additional_inputs=[model_selector],
+                )
 
     return app
 
@@ -169,7 +288,7 @@ def main() -> None:
     """Launch the Gradio app."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     app = create_app()
-    app.launch()
+    app.launch(theme=gr.themes.Soft())
 
 
 if __name__ == "__main__":
