@@ -18,6 +18,12 @@ from src.memory.summarizer import ConversationSummarizer
 from src.memory.working import ConversationSnapshot, WorkingMemory
 from src.models.base import Message
 
+# Optional import — avoids circular dependency
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.observability import MetricsCollector
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,11 +36,13 @@ class MemoryManager:
         working: WorkingMemory,
         summarizer: ConversationSummarizer,
         store: RedisSessionStore,
+        metrics: MetricsCollector | None = None,
     ) -> None:
         self._session_id = session_id
         self._working = working
         self._summarizer = summarizer
         self._store = store
+        self._metrics = metrics
         self._initialized = False
 
     async def initialize(self) -> None:
@@ -49,6 +57,8 @@ class MemoryManager:
                 for m in state.messages
             ]
             self._working.summary = state.summary
+            if self._metrics:
+                asyncio.create_task(self._metrics.record_session_restore())
             logger.info(
                 "Restored session %s: %d messages, summary=%d chars",
                 self._session_id,
@@ -69,6 +79,8 @@ class MemoryManager:
                 self._working.summary, evicted
             )
             self._working.summary = updated_summary
+            if self._metrics:
+                asyncio.create_task(self._metrics.record_summarization())
             logger.info(
                 "Summarized %d evicted messages, summary now %d chars",
                 len(evicted),

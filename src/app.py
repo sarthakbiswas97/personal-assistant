@@ -20,6 +20,7 @@ from src.memory.persistence import RedisSessionStore
 from src.memory.summarizer import ConversationSummarizer
 from src.memory.working import WorkingMemory
 from src.models.base import BaseModel, Message
+from src.observability import MetricsCollector
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,7 @@ def _get_or_create_model(model_key: str) -> BaseModel:
 _managers: dict[str, MemoryManager] = {}
 _store: RedisSessionStore | None = None
 _summarizer: ConversationSummarizer | None = None
+_metrics: MetricsCollector | None = None
 
 SYSTEM_PROMPT = (
     "You are a helpful, harmless, and honest AI assistant. "
@@ -94,6 +96,15 @@ def _get_summarizer() -> ConversationSummarizer:
     return _summarizer
 
 
+def _get_metrics() -> MetricsCollector:
+    """Lazy-init shared metrics collector."""
+    global _metrics
+    if _metrics is None:
+        settings = load_settings()
+        _metrics = MetricsCollector(redis_url=settings.redis_url)
+    return _metrics
+
+
 def _get_memory(session_id: str) -> MemoryManager:
     """Get or create a MemoryManager for a session."""
     if session_id not in _managers:
@@ -107,6 +118,7 @@ def _get_memory(session_id: str) -> MemoryManager:
             working=working,
             summarizer=_get_summarizer(),
             store=_get_store(),
+            metrics=_get_metrics(),
         )
     return _managers[session_id]
 
@@ -137,6 +149,10 @@ async def _generate_full_response(model_key: str, message: str) -> tuple[str, fl
         response = f"[Response filtered: {output_check.reason}]"
 
     await memory.add_assistant_message(response)
+
+    # Record metrics
+    asyncio.create_task(_get_metrics().record_request(model_key, latency_ms))
+
     return response, latency_ms
 
 
@@ -158,6 +174,7 @@ async def _arena_single_model(
 
     input_check = check_input(message)
     if input_check.is_blocked:
+        asyncio.create_task(_get_metrics().record_guardrail_block())
         history = history + [
             {"role": "user", "content": message},
             {"role": "assistant", "content": input_check.reason},
@@ -169,6 +186,7 @@ async def _arena_single_model(
     try:
         response, latency_ms = await _generate_full_response(model_key, message)
     except ValueError as e:
+        asyncio.create_task(_get_metrics().record_error())
         history = history + [{"role": "assistant", "content": f"Error: {e}"}]
         return history, "Configuration error"
 
@@ -205,12 +223,14 @@ async def respond(
     """Handle a single-model chat message with streaming."""
     input_check = check_input(message)
     if input_check.is_blocked:
+        asyncio.create_task(_get_metrics().record_guardrail_block())
         yield input_check.reason
         return
 
     try:
         model = _get_or_create_model(model_choice)
     except ValueError as e:
+        asyncio.create_task(_get_metrics().record_error())
         yield f"Error: {e}"
         return
 
@@ -333,6 +353,10 @@ def create_app() -> gr.Blocks:
             with gr.Tab("Evaluation", id="eval"):
                 _build_evaluation_tab()
 
+            # -- Observability Tab --
+            with gr.Tab("Observability", id="obs"):
+                _build_observability_tab()
+
     return app
 
 
@@ -426,6 +450,51 @@ def _load_eval_summary(results_path: Path) -> dict | None:
 
     model_names = " vs ".join(model_stats.keys())
     return {"table_md": "\n".join(rows), "model_names": model_names}
+
+
+def _build_observability_tab() -> None:
+    """Build the live observability dashboard tab."""
+
+    async def _fetch_metrics() -> str:
+        """Fetch current metrics from Redis and format as markdown."""
+        collector = _get_metrics()
+        summary = await collector.get_summary()
+
+        if summary is None:
+            return "*Redis not configured. Set REDIS_URL to enable observability.*"
+
+        lines = ["## Live Metrics", ""]
+
+        # Request counts
+        lines.append("### Requests")
+        if summary.requests:
+            lines.append("| Model | Count | Avg Latency | P50 | P95 |")
+            lines.append("|---|---|---|---|---|")
+            for model, count in summary.requests.items():
+                avg = f"{summary.latency_avg.get(model, 0):.0f}ms"
+                p50 = f"{summary.latency_p50.get(model, 0):.0f}ms"
+                p95 = f"{summary.latency_p95.get(model, 0):.0f}ms"
+                lines.append(f"| {model} | {count} | {avg} | {p50} | {p95} |")
+        else:
+            lines.append("*No requests yet.*")
+
+        # System metrics
+        lines.append("")
+        lines.append("### System")
+        lines.append(f"- **Guardrail blocks:** {summary.guardrail_blocks}")
+        lines.append(f"- **Context summarizations:** {summary.summarizations}")
+        lines.append(f"- **Session restores (from Redis):** {summary.session_restores}")
+        lines.append(f"- **Errors:** {summary.errors}")
+
+        return "\n".join(lines)
+
+    gr.Markdown(
+        "## Observability\n"
+        "Live runtime metrics collected via Redis. Click Refresh to update."
+    )
+    metrics_display = gr.Markdown("*Click Refresh to load metrics.*")
+    refresh_btn = gr.Button("Refresh Metrics", variant="secondary")
+    refresh_btn.click(fn=_fetch_metrics, outputs=[metrics_display])
 
 
 def main() -> None:
