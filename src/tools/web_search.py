@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 _KEYWORDS = [
     "search", "find", "look up", "lookup", "google",
-    "latest", "news", "current", "recent", "today",
+    "latest", "news", "current events", "recent news",
     "what happened", "trending",
 ]
 
