@@ -5,15 +5,12 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from src.tools.base import ToolResult
 from src.tools.calculator import CalculatorTool
 from src.tools.registry import ToolRegistry
 from src.tools.router import ToolRouter
 from src.tools.web_search import WebSearchTool
 from src.tools.wikipedia import WikipediaTool
-
 
 # -- ToolResult Tests --
 
