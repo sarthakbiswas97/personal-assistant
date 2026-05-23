@@ -13,6 +13,10 @@ pydantic-settings>=2.0.0
 # Context persistence
 redis[hiredis]>=5.0.0
 
+# Tools
+duckduckgo-search>=7.0.0
+wikipedia>=1.4.0
+
 # Evaluation
 matplotlib>=3.8.0
 seaborn>=0.13.0

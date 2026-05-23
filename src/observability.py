@@ -25,6 +25,8 @@ class MetricsSummary:
     summarizations: int
     session_restores: int
     errors: int
+    tool_calls: dict[str, int]
+    tool_failures: dict[str, int]
 
 
 class MetricsCollector:
@@ -88,6 +90,16 @@ class MetricsCollector:
         except Exception:
             logger.warning("Failed to record session restore metric", exc_info=True)
 
+    async def record_tool_call(self, tool_name: str, success: bool) -> None:
+        if not self._available:
+            return
+        try:
+            await self._client.incr(f"{_PREFIX}tool_calls:{tool_name}")
+            if not success:
+                await self._client.incr(f"{_PREFIX}tool_failures:{tool_name}")
+        except Exception:
+            logger.warning("Failed to record tool call metric", exc_info=True)
+
     async def record_error(self) -> None:
         if not self._available:
             return
@@ -139,6 +151,15 @@ class MetricsCollector:
             )
             errors = int(await self._client.get(f"{_PREFIX}errors") or 0)
 
+            # Tool metrics
+            tool_calls: dict[str, int] = {}
+            tool_failures: dict[str, int] = {}
+            async for key in self._client.scan_iter(f"{_PREFIX}tool_calls:*"):
+                tool = key.replace(f"{_PREFIX}tool_calls:", "")
+                tool_calls[tool] = int(await self._client.get(key) or 0)
+                fail_count = await self._client.get(f"{_PREFIX}tool_failures:{tool}")
+                tool_failures[tool] = int(fail_count) if fail_count else 0
+
             return MetricsSummary(
                 requests=requests,
                 latency_avg=latency_avg,
@@ -148,6 +169,8 @@ class MetricsCollector:
                 summarizations=summarizations,
                 session_restores=session_restores,
                 errors=errors,
+                tool_calls=tool_calls,
+                tool_failures=tool_failures,
             )
         except Exception:
             logger.warning("Failed to read metrics", exc_info=True)

@@ -13,7 +13,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-import time
 
 from src.tools.base import Tool, ToolResult
 from src.tools.router import ToolRouter
@@ -39,6 +38,7 @@ class ToolRegistry:
     def __init__(self, router: ToolRouter) -> None:
         self._tools: dict[str, Tool] = {}
         self._router = router
+        self._last_results: list[ToolResult] = []
 
     def register(self, tool: Tool) -> None:
         """Register a tool by its name."""
@@ -69,6 +69,9 @@ class ToolRegistry:
 
         # 3. Chain: if wiki returned data and query has math intent, run calculator
         results = await self._chain(query, results)
+
+        # Store for observability
+        self._last_results = list(results)
 
         # 4. Filter successful results
         successful = [r for r in results if r.success]
@@ -113,7 +116,7 @@ class ToolRegistry:
                 timeout=_TOOL_TIMEOUT_SECONDS,
             )
             return result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Tool %s timed out after %ds", tool_name, _TOOL_TIMEOUT_SECONDS)
             return ToolResult(
                 tool_name=tool_name,

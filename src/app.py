@@ -19,8 +19,13 @@ from src.memory.manager import MemoryManager
 from src.memory.persistence import RedisSessionStore
 from src.memory.summarizer import ConversationSummarizer
 from src.memory.working import WorkingMemory
-from src.models.base import BaseModel
+from src.models.base import BaseModel, Message
 from src.observability import MetricsCollector
+from src.tools.calculator import CalculatorTool
+from src.tools.registry import ToolRegistry
+from src.tools.router import ToolRouter
+from src.tools.web_search import WebSearchTool
+from src.tools.wikipedia import WikipediaTool
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +72,7 @@ _managers: dict[str, MemoryManager] = {}
 _store: RedisSessionStore | None = None
 _summarizer: ConversationSummarizer | None = None
 _metrics: MetricsCollector | None = None
+_registry: ToolRegistry | None = None
 
 SYSTEM_PROMPT = (
     "You are a helpful, harmless, and honest AI assistant. "
@@ -105,6 +111,23 @@ def _get_metrics() -> MetricsCollector:
     return _metrics
 
 
+def _get_registry() -> ToolRegistry:
+    """Lazy-init shared tool registry."""
+    global _registry
+    if _registry is None:
+        settings = load_settings()
+        router = ToolRouter(
+            api_key=settings.openai_api_key,
+            model_name=settings.frontier_model_name,
+        )
+        _registry = ToolRegistry(router)
+        _registry.register(WebSearchTool())
+        _registry.register(WikipediaTool())
+        _registry.register(CalculatorTool())
+        logger.info("Tool registry initialized: %s", _registry.tool_names)
+    return _registry
+
+
 def _get_memory(session_id: str) -> MemoryManager:
     """Get or create a MemoryManager for a session."""
     if session_id not in _managers:
@@ -126,8 +149,15 @@ def _get_memory(session_id: str) -> MemoryManager:
 # -- Single model response (used by both modes) --
 
 
-async def _generate_full_response(model_key: str, message: str) -> tuple[str, float]:
+async def _generate_full_response(
+    model_key: str, message: str, tool_context: str = ""
+) -> tuple[str, float]:
     """Generate a full response and measure latency.
+
+    Args:
+        model_key: Which model to use.
+        message: User's message.
+        tool_context: Pre-computed tool results to inject into context.
 
     Returns:
         Tuple of (response_text, latency_ms).
@@ -136,6 +166,10 @@ async def _generate_full_response(model_key: str, message: str) -> tuple[str, fl
     await memory.add_user_message(message)
     snapshot = memory.get_snapshot()
     messages = snapshot.to_message_list()
+
+    # Inject tool context before the latest user message
+    if tool_context:
+        messages.insert(-1, Message(role="system", content=tool_context))
 
     model = _get_or_create_model(model_key)
 
@@ -192,12 +226,22 @@ async def arena_respond(
     oss_history = oss_history + [{"role": "user", "content": message}]
     frontier_history = frontier_history + [{"role": "user", "content": message}]
 
+    # Tools execute ONCE, results shared by both models
+    tool_context = await _get_registry().route_and_execute(message)
+
+    # Log tool calls to observability
+    if tool_context:
+        for result in _get_registry()._last_results:
+            asyncio.create_task(
+                _get_metrics().record_tool_call(result.tool_name, result.success)
+            )
+
     # Fire both concurrently — latency measured independently inside each
     oss_task = asyncio.create_task(
-        _generate_full_response(MODEL_OSS, message)
+        _generate_full_response(MODEL_OSS, message, tool_context)
     )
     frontier_task = asyncio.create_task(
-        _generate_full_response(MODEL_FRONTIER, message)
+        _generate_full_response(MODEL_FRONTIER, message, tool_context)
     )
 
     try:
@@ -254,11 +298,22 @@ async def respond(
         yield f"Error: {e}"
         return
 
+    # Tool execution
+    tool_context = await _get_registry().route_and_execute(message)
+    for result in _get_registry()._last_results:
+        asyncio.create_task(
+            _get_metrics().record_tool_call(result.tool_name, result.success)
+        )
+
     session_id = f"default_{model_choice}"
     memory = _get_memory(session_id)
     await memory.add_user_message(message)
     snapshot = memory.get_snapshot()
     messages = snapshot.to_message_list()
+
+    if tool_context:
+        messages.insert(-1, Message(role="system", content=tool_context))
+
     full_response = ""
 
     async for token in model.stream(messages):
@@ -488,6 +543,16 @@ def _build_observability_tab() -> None:
                 lines.append(f"| {model} | {count} | {avg} | {p50} | {p95} |")
         else:
             lines.append("*No requests yet.*")
+
+        # Tool metrics
+        if summary.tool_calls:
+            lines.append("")
+            lines.append("### Tools")
+            lines.append("| Tool | Calls | Failures |")
+            lines.append("|---|---|---|")
+            for tool, count in summary.tool_calls.items():
+                failures = summary.tool_failures.get(tool, 0)
+                lines.append(f"| {tool} | {count} | {failures} |")
 
         # System metrics
         lines.append("")

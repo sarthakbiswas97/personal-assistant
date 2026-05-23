@@ -11,7 +11,7 @@ import logging
 import operator
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from src.tools.base import ToolResult
 
@@ -106,7 +106,7 @@ def _is_datetime_query(query: str) -> bool:
 
 def _handle_datetime(query: str) -> dict[str, str]:
     """Return current UTC datetime."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return {
         "type": "datetime",
         "utc_time": now.strftime("%Y-%m-%d %H:%M:%S UTC"),
