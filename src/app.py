@@ -15,7 +15,10 @@ from dotenv import load_dotenv
 
 from src.config import load_settings
 from src.guardrails import check_input, check_output
-from src.memory import ConversationMemory
+from src.memory.manager import MemoryManager
+from src.memory.persistence import RedisSessionStore
+from src.memory.summarizer import ConversationSummarizer
+from src.memory.working import WorkingMemory
 from src.models.base import BaseModel, Message
 
 logger = logging.getLogger(__name__)
@@ -57,9 +60,11 @@ def _get_or_create_model(model_key: str) -> BaseModel:
     return _models[model_key]
 
 
-# -- Per-session memory --
+# -- Per-session memory (tiered context management) --
 
-_memories: dict[str, ConversationMemory] = {}
+_managers: dict[str, MemoryManager] = {}
+_store: RedisSessionStore | None = None
+_summarizer: ConversationSummarizer | None = None
 
 SYSTEM_PROMPT = (
     "You are a helpful, harmless, and honest AI assistant. "
@@ -68,15 +73,42 @@ SYSTEM_PROMPT = (
 )
 
 
-def _get_memory(session_id: str) -> ConversationMemory:
-    """Get or create conversation memory for a session."""
-    if session_id not in _memories:
+def _get_store() -> RedisSessionStore:
+    """Lazy-init shared Redis store."""
+    global _store
+    if _store is None:
         settings = load_settings()
-        _memories[session_id] = ConversationMemory(
+        _store = RedisSessionStore(redis_url=settings.redis_url)
+    return _store
+
+
+def _get_summarizer() -> ConversationSummarizer:
+    """Lazy-init shared summarizer."""
+    global _summarizer
+    if _summarizer is None:
+        settings = load_settings()
+        _summarizer = ConversationSummarizer(
+            api_key=settings.openai_api_key,
+            model_name=settings.frontier_model_name,
+        )
+    return _summarizer
+
+
+def _get_memory(session_id: str) -> MemoryManager:
+    """Get or create a MemoryManager for a session."""
+    if session_id not in _managers:
+        settings = load_settings()
+        working = WorkingMemory(
             max_turns=settings.max_conversation_turns,
             system_prompt=SYSTEM_PROMPT,
         )
-    return _memories[session_id]
+        _managers[session_id] = MemoryManager(
+            session_id=session_id,
+            working=working,
+            summarizer=_get_summarizer(),
+            store=_get_store(),
+        )
+    return _managers[session_id]
 
 
 # -- Single model response (used by both modes) --
@@ -89,7 +121,7 @@ async def _generate_full_response(model_key: str, message: str) -> tuple[str, fl
         Tuple of (response_text, latency_ms).
     """
     memory = _get_memory(f"default_{model_key}")
-    memory.add_user_message(message)
+    await memory.add_user_message(message)
     snapshot = memory.get_snapshot()
     messages = snapshot.to_message_list()
 
@@ -104,7 +136,7 @@ async def _generate_full_response(model_key: str, message: str) -> tuple[str, fl
     if output_check.is_blocked:
         response = f"[Response filtered: {output_check.reason}]"
 
-    memory.add_assistant_message(response)
+    await memory.add_assistant_message(response)
     return response, latency_ms
 
 
@@ -154,11 +186,11 @@ async def arena_frontier(message: str, history: list[dict]) -> tuple[list[dict],
     return await _arena_single_model(message, history, MODEL_FRONTIER)
 
 
-def clear_arena() -> tuple[str, list, str, list, str]:
+async def clear_arena() -> tuple[str, list, str, list, str]:
     """Clear both chat histories and reset memory."""
-    for key in list(_memories.keys()):
+    for key in list(_managers.keys()):
         if key.startswith("default_"):
-            _memories[key].reset()
+            await _managers[key].reset()
     return "", [], "", [], ""
 
 
@@ -184,7 +216,7 @@ async def respond(
 
     session_id = f"default_{model_choice}"
     memory = _get_memory(session_id)
-    memory.add_user_message(message)
+    await memory.add_user_message(message)
     snapshot = memory.get_snapshot()
     messages = snapshot.to_message_list()
     full_response = ""
@@ -197,7 +229,7 @@ async def respond(
     if output_check.is_blocked:
         yield f"{full_response}\n\n[Response filtered: {output_check.reason}]"
 
-    memory.add_assistant_message(full_response)
+    await memory.add_assistant_message(full_response)
 
 
 # -- App factory --

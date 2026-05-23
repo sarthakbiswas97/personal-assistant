@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     oss_model_name: str = "Qwen/Qwen2.5-0.5B-Instruct"
     frontier_model_name: str = "gpt-4.1-mini"
     max_conversation_turns: int = 10
+    redis_url: str = ""
 
     model_config = {"env_file": ".env", "frozen": True}
 
