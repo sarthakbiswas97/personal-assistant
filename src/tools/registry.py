@@ -57,6 +57,10 @@ class ToolRegistry:
         if not self._tools:
             return ""
 
+        # Skip tool routing for very short queries (chitchat)
+        if len(query.strip().split()) < 3:
+            return ""
+
         # 1. Route
         matched = await self._router.route(query, self._tools)
         if not matched:
