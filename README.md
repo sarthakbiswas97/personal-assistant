@@ -1,8 +1,8 @@
 ---
 title: AI Assistant Arena
-emoji: "vs"
+emoji: "\U0001F3DF"
 colorFrom: blue
-colorTo: orange
+colorTo: indigo
 sdk: docker
 app_port: 7860
 pinned: true
