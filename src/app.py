@@ -133,7 +133,13 @@ async def _arena_single_model(
         return history, "Blocked by guardrails"
 
     history = history + [{"role": "user", "content": message}]
-    response, latency_ms = await _generate_full_response(model_key, message)
+
+    try:
+        response, latency_ms = await _generate_full_response(model_key, message)
+    except ValueError as e:
+        history = history + [{"role": "assistant", "content": f"Error: {e}"}]
+        return history, "Configuration error"
+
     history = history + [{"role": "assistant", "content": response}]
     return history, f"Latency: {latency_ms:.0f}ms"
 
@@ -170,13 +176,17 @@ async def respond(
         yield input_check.reason
         return
 
+    try:
+        model = _get_or_create_model(model_choice)
+    except ValueError as e:
+        yield f"Error: {e}"
+        return
+
     session_id = f"default_{model_choice}"
     memory = _get_memory(session_id)
     memory.add_user_message(message)
     snapshot = memory.get_snapshot()
     messages = snapshot.to_message_list()
-
-    model = _get_or_create_model(model_choice)
     full_response = ""
 
     async for token in model.stream(messages):

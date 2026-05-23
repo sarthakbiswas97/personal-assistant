@@ -12,5 +12,3 @@ tests/
 requirements-dev.txt
 *.md
 .DS_Store
-eval/outputs/
-eval/reports/
