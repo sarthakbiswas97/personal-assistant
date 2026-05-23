@@ -159,49 +159,69 @@ async def _generate_full_response(model_key: str, message: str) -> tuple[str, fl
 # -- Arena handler --
 
 
-async def _arena_single_model(
+async def arena_respond(
     message: str,
-    history: list[dict],
-    model_key: str,
-) -> tuple[list[dict], str]:
-    """Handle one model's response in arena mode.
+    oss_history: list[dict],
+    frontier_history: list[dict],
+) -> tuple[str, list[dict], str, list[dict], str]:
+    """Handle arena mode: both models respond concurrently.
 
-    Runs as an independent Gradio event handler with its own
-    concurrency lane, so it updates its chatbot independently.
+    Fires both requests simultaneously via asyncio.create_task.
+    Both responses appear together with independent latency measurements.
     """
     if not message.strip():
-        return history, ""
+        return "", oss_history, "", frontier_history, ""
 
     input_check = check_input(message)
     if input_check.is_blocked:
         asyncio.create_task(_get_metrics().record_guardrail_block())
-        history = history + [
+        blocked_msg = input_check.reason
+        oss_history = oss_history + [
             {"role": "user", "content": message},
-            {"role": "assistant", "content": input_check.reason},
+            {"role": "assistant", "content": blocked_msg},
         ]
-        return history, "Blocked by guardrails"
+        frontier_history = frontier_history + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": blocked_msg},
+        ]
+        return (
+            "", oss_history, "Blocked by guardrails",
+            frontier_history, "Blocked by guardrails",
+        )
 
-    history = history + [{"role": "user", "content": message}]
+    oss_history = oss_history + [{"role": "user", "content": message}]
+    frontier_history = frontier_history + [{"role": "user", "content": message}]
+
+    # Fire both concurrently — latency measured independently inside each
+    oss_task = asyncio.create_task(
+        _generate_full_response(MODEL_OSS, message)
+    )
+    frontier_task = asyncio.create_task(
+        _generate_full_response(MODEL_FRONTIER, message)
+    )
 
     try:
-        response, latency_ms = await _generate_full_response(model_key, message)
+        oss_response, oss_latency = await oss_task
     except ValueError as e:
+        oss_response, oss_latency = f"Error: {e}", 0
         asyncio.create_task(_get_metrics().record_error())
-        history = history + [{"role": "assistant", "content": f"Error: {e}"}]
-        return history, "Configuration error"
 
-    history = history + [{"role": "assistant", "content": response}]
-    return history, f"Latency: {latency_ms:.0f}ms"
+    try:
+        frontier_response, frontier_latency = await frontier_task
+    except ValueError as e:
+        frontier_response, frontier_latency = f"Error: {e}", 0
+        asyncio.create_task(_get_metrics().record_error())
 
+    oss_history = oss_history + [{"role": "assistant", "content": oss_response}]
+    frontier_history = frontier_history + [
+        {"role": "assistant", "content": frontier_response}
+    ]
 
-async def arena_oss(message: str, history: list[dict]) -> tuple[list[dict], str]:
-    """Independent OSS handler for arena."""
-    return await _arena_single_model(message, history, MODEL_OSS)
-
-
-async def arena_frontier(message: str, history: list[dict]) -> tuple[list[dict], str]:
-    """Independent frontier handler for arena."""
-    return await _arena_single_model(message, history, MODEL_FRONTIER)
+    return (
+        "",
+        oss_history, f"Latency: {oss_latency:.0f}ms",
+        frontier_history, f"Latency: {frontier_latency:.0f}ms",
+    )
 
 
 async def clear_arena() -> tuple[str, list, str, list, str]:
@@ -295,9 +315,6 @@ def create_app() -> gr.Blocks:
                         )
                         frontier_status = gr.Markdown("")
 
-                # State to hold the message so it survives input clearing
-                arena_msg_state = gr.State("")
-
                 with gr.Row():
                     arena_input = gr.Textbox(
                         placeholder="Type a message to compare both models...",
@@ -309,42 +326,25 @@ def create_app() -> gr.Blocks:
 
                 arena_clear = gr.Button("Clear conversation")
 
-                # Wire up arena events.
-                # Step 1: Save message to state and clear input.
-                # Step 2: Both model handlers read from state (not input).
-                def _save_and_clear(msg: str) -> tuple[str, str]:
-                    return msg, ""
-
-                for trigger in [arena_submit.click, arena_input.submit]:
-                    # Save message to state, clear input
-                    trigger(
-                        fn=_save_and_clear,
-                        inputs=[arena_input],
-                        outputs=[arena_msg_state, arena_input],
-                    )
-                    # OSS — own concurrency lane, reads from state
-                    trigger(
-                        fn=arena_oss,
-                        inputs=[arena_msg_state, oss_chatbot],
-                        outputs=[oss_chatbot, oss_status],
-                        concurrency_id="arena_oss",
-                        concurrency_limit=1,
-                    )
-                    # Frontier — own concurrency lane, reads from state
-                    trigger(
-                        fn=arena_frontier,
-                        inputs=[arena_msg_state, frontier_chatbot],
-                        outputs=[frontier_chatbot, frontier_status],
-                        concurrency_id="arena_frontier",
-                        concurrency_limit=1,
-                    )
-
+                # Single handler fires both models concurrently.
+                # Both responses appear together with independent latency.
+                arena_outputs = [
+                    arena_input, oss_chatbot, oss_status,
+                    frontier_chatbot, frontier_status,
+                ]
+                arena_submit.click(
+                    fn=arena_respond,
+                    inputs=[arena_input, oss_chatbot, frontier_chatbot],
+                    outputs=arena_outputs,
+                )
+                arena_input.submit(
+                    fn=arena_respond,
+                    inputs=[arena_input, oss_chatbot, frontier_chatbot],
+                    outputs=arena_outputs,
+                )
                 arena_clear.click(
                     fn=clear_arena,
-                    outputs=[
-                        arena_input, oss_chatbot, oss_status,
-                        frontier_chatbot, frontier_status,
-                    ],
+                    outputs=arena_outputs,
                 )
 
             # -- Single Model Tab --
