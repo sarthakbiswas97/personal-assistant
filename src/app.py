@@ -295,6 +295,9 @@ def create_app() -> gr.Blocks:
                         )
                         frontier_status = gr.Markdown("")
 
+                # State to hold the message so it survives input clearing
+                arena_msg_state = gr.State("")
+
                 with gr.Row():
                     arena_input = gr.Textbox(
                         placeholder="Type a message to compare both models...",
@@ -307,25 +310,30 @@ def create_app() -> gr.Blocks:
                 arena_clear = gr.Button("Clear conversation")
 
                 # Wire up arena events.
-                # Two independent handlers per trigger, each in its own
-                # concurrency lane. Gradio runs them in parallel and each
-                # sends its own SSE stream, so the faster model's chatbot
-                # updates first.
+                # Step 1: Save message to state and clear input.
+                # Step 2: Both model handlers read from state (not input).
+                def _save_and_clear(msg: str) -> tuple[str, str]:
+                    return msg, ""
+
                 for trigger in [arena_submit.click, arena_input.submit]:
-                    # Clear input immediately
-                    trigger(fn=lambda: "", outputs=[arena_input])
-                    # OSS — own concurrency lane
+                    # Save message to state, clear input
+                    trigger(
+                        fn=_save_and_clear,
+                        inputs=[arena_input],
+                        outputs=[arena_msg_state, arena_input],
+                    )
+                    # OSS — own concurrency lane, reads from state
                     trigger(
                         fn=arena_oss,
-                        inputs=[arena_input, oss_chatbot],
+                        inputs=[arena_msg_state, oss_chatbot],
                         outputs=[oss_chatbot, oss_status],
                         concurrency_id="arena_oss",
                         concurrency_limit=1,
                     )
-                    # Frontier — own concurrency lane
+                    # Frontier — own concurrency lane, reads from state
                     trigger(
                         fn=arena_frontier,
-                        inputs=[arena_input, frontier_chatbot],
+                        inputs=[arena_msg_state, frontier_chatbot],
                         outputs=[frontier_chatbot, frontier_status],
                         concurrency_id="arena_frontier",
                         concurrency_limit=1,
