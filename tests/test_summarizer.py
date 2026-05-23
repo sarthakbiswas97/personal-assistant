@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
+from src.memory.summarizer import (
+    ConversationSummarizer,
+    _extractive_fallback,
+    _format_turns,
+)
 from src.models.base import Message
-from src.memory.summarizer import ConversationSummarizer, _extractive_fallback, _format_turns
 
 
 class TestFormatTurns:

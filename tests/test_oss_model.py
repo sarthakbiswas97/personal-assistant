@@ -91,7 +91,6 @@ class TestOSSModel:
         mock_model.generate.side_effect = fake_generate
 
         # Use the real TextIteratorStreamer behavior via mock
-        from transformers import TextIteratorStreamer as RealStreamer
         import queue
 
         class FakeStreamer:

@@ -19,7 +19,7 @@ from src.memory.manager import MemoryManager
 from src.memory.persistence import RedisSessionStore
 from src.memory.summarizer import ConversationSummarizer
 from src.memory.working import WorkingMemory
-from src.models.base import BaseModel, Message
+from src.models.base import BaseModel
 from src.observability import MetricsCollector
 
 logger = logging.getLogger(__name__)
@@ -280,7 +280,7 @@ def create_app() -> gr.Blocks:
                         oss_chatbot = gr.Chatbot(
                             height=450,
                             label="OSS Model",
-    
+
 
                         )
                         oss_status = gr.Markdown("")
@@ -290,7 +290,7 @@ def create_app() -> gr.Blocks:
                         frontier_chatbot = gr.Chatbot(
                             height=450,
                             label="Frontier Model",
-    
+
 
                         )
                         frontier_status = gr.Markdown("")
@@ -333,7 +333,10 @@ def create_app() -> gr.Blocks:
 
                 arena_clear.click(
                     fn=clear_arena,
-                    outputs=[arena_input, oss_chatbot, oss_status, frontier_chatbot, frontier_status],
+                    outputs=[
+                        arena_input, oss_chatbot, oss_status,
+                        frontier_chatbot, frontier_status,
+                    ],
                 )
 
             # -- Single Model Tab --

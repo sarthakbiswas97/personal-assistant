@@ -9,11 +9,10 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from eval.judge import JudgmentScore, LLMJudge
 from src.config import load_settings
 from src.guardrails import check_input
 from src.models.base import BaseModel, Message
-
-from eval.judge import JudgmentScore, LLMJudge
 
 logger = logging.getLogger(__name__)
 

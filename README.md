@@ -1,3 +1,13 @@
+---
+title: AI Assistant Arena
+emoji: "vs"
+colorFrom: blue
+colorTo: orange
+sdk: docker
+app_port: 7860
+pinned: true
+---
+
 # AI Assistant Arena: OSS vs Frontier
 
 A comparative AI assistant with side-by-side arena mode, tiered context management with Redis persistence, safety guardrails, runtime observability, and an automated LLM-as-judge evaluation pipeline.

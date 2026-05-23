@@ -13,13 +13,13 @@ from __future__ import annotations
 import asyncio
 import logging
 
+# Optional import — avoids circular dependency
+from typing import TYPE_CHECKING
+
 from src.memory.persistence import RedisSessionStore
 from src.memory.summarizer import ConversationSummarizer
 from src.memory.working import ConversationSnapshot, WorkingMemory
 from src.models.base import Message
-
-# Optional import — avoids circular dependency
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.observability import MetricsCollector

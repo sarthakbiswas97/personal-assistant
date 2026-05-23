@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
-from src.models.base import Message
 from src.memory.persistence import RedisSessionStore, SessionState
+from src.models.base import Message
 
 
 class TestSessionState:

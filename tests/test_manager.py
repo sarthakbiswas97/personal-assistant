@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -10,7 +11,6 @@ from src.memory.manager import MemoryManager
 from src.memory.persistence import RedisSessionStore, SessionState
 from src.memory.summarizer import ConversationSummarizer
 from src.memory.working import WorkingMemory
-from src.models.base import Message
 
 
 @pytest.fixture
@@ -142,6 +142,3 @@ class TestMemoryManager:
         assert manager.turn_count == 0
         assert manager.summary == ""
         mock_store.delete_session.assert_called_once_with("test_session")
-
-
-import asyncio

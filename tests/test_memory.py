@@ -1,6 +1,5 @@
 """Tests for working memory module."""
 
-import pytest
 
 from src.memory.working import WorkingMemory
 
