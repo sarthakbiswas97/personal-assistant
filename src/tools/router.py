@@ -15,6 +15,19 @@ from openai import AsyncOpenAI
 
 from src.tools.base import Tool
 
+# Queries that never need tools — skip LLM fallback entirely.
+# Keyword heuristic still runs (in case someone says "search" as a greeting).
+_CHITCHAT = frozenset({
+    "hello", "hi", "hey", "howdy", "greetings",
+    "thanks", "thank you", "thx",
+    "bye", "goodbye", "see you",
+    "ok", "okay", "sure", "cool", "great", "nice",
+    "yes", "no", "yeah", "nah", "yep", "nope",
+    "help", "help me",
+    "good morning", "good evening", "good night",
+    "how are you", "what's up", "whats up",
+})
+
 logger = logging.getLogger(__name__)
 
 _LLM_ROUTER_PROMPT = """\
@@ -108,16 +121,32 @@ class ToolRouter:
             return []
 
     async def route(self, query: str, tools: dict[str, Tool]) -> list[str]:
-        """Hybrid routing: keyword first, LLM fallback if no match."""
-        # Fast path: keyword heuristic
+        """Hybrid routing: keyword first, LLM fallback if no match.
+
+        Flow:
+        1. Always run keyword heuristic (instant, catches "search AI" etc.)
+        2. If no keyword match, check if query is chitchat → skip LLM
+        3. Otherwise, fall back to LLM classifier for subtle queries
+        """
+        # Fast path: keyword heuristic (always runs, even for short queries)
         matched = self.route_keyword(query, tools)
         if matched:
             logger.debug("Keyword router matched: %s", matched)
             return matched
 
-        # Slow path: LLM classification (only if available)
+        # Skip LLM fallback for chitchat (no point classifying "hello")
+        if self._is_chitchat(query):
+            return []
+
+        # Slow path: LLM classification for substantive queries
         matched = await self.route_llm(query, tools)
         return matched
+
+    @staticmethod
+    def _is_chitchat(query: str) -> bool:
+        """Check if query is conversational filler that never needs tools."""
+        normalized = query.strip().lower().rstrip("?!.")
+        return normalized in _CHITCHAT
 
     async def cleanup(self) -> None:
         """Close the underlying HTTP client."""
