@@ -170,9 +170,9 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    Query[User Query] --> Check{Length >= 3 words?}
-    Check -->|no| Skip[No tools\nchitchat shortcut]
-    Check -->|yes| KW{Keyword\nHeuristic}
+    Query[User Query] --> Chitchat{Chitchat?\nhello, thanks...}
+    Chitchat -->|yes| Skip[No tools]
+    Chitchat -->|no| KW{Keyword\nHeuristic}
 
     KW -->|match| Exec
     KW -->|no match| LLM{LLM Classifier\nGPT-4.1-mini}
@@ -187,11 +187,23 @@ flowchart LR
     end
 
     Exec --> Timeout{5s timeout\nper tool}
-    Timeout -->|success| Format[Format context\nmax 1500 chars]
+    Timeout -->|success| Chain
     Timeout -->|fail| Retry[Retry once\n1s backoff]
-    Retry -->|success| Format
+    Retry -->|success| Chain
     Retry -->|fail again| Degrade[Skip tool\ngraceful degradation]
+
+    subgraph Chain[LLM Chain Validation]
+        PreFilter{Results have\nnumbers?}
+        PreFilter -->|no| NoChain[Skip chaining]
+        PreFilter -->|yes| LLMChain[LLM validates:\nmath intent or metaphor?]
+        LLMChain -->|math| CalcChain[Calculator on\nextracted expression]
+        LLMChain -->|metaphor| NoChain
+    end
+
+    Chain --> Format[Format context\nmax 1500 chars]
 ```
+
+**Why LLM-driven chaining?** Heuristic chaining (regex for "divided", "times", etc.) produces false positives: "nations divided by borders" is not math, but regex can't tell. The LLM chain validator sees both the query AND the tool results, giving it semantic context to distinguish computation from metaphor. A cheap pre-filter (do results contain numbers?) gates the LLM call to keep costs near zero for most queries.
 
 ### Tools
 
