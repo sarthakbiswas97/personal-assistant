@@ -6,7 +6,7 @@
 <title>AI Assistant Arena - Architecture Walkthrough</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0f172a;--surface:#1e293b;--surface2:#334155;--accent:#3b82f6;--accent2:#8b5cf6;--green:#22c55e;--orange:#f97316;--red:#ef4444;--text:#f1f5f9;--muted:#94a3b8}
+:root{--bg:#111113;--surface:#1a1a1e;--surface2:#2a2a2e;--accent:#3b82f6;--accent2:#8b5cf6;--green:#22c55e;--orange:#f97316;--red:#ef4444;--text:#e4e4e7;--muted:#85858a}
 body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh}
 
 /* Slide system */
@@ -82,7 +82,7 @@ a{color:var(--accent);text-decoration:none}
 #arch-svg g[style*="cursor:pointer"]:hover ellipse{filter:url(#glow);stroke-width:2.5}
 
 /* Modal overlay */
-.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:300;opacity:0;pointer-events:none;transition:opacity .3s;display:flex;align-items:center;justify-content:center}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:300;opacity:0;pointer-events:none;transition:opacity .3s;display:flex;align-items:center;justify-content:center}
 .modal-backdrop.open{opacity:1;pointer-events:all}
 .modal-content{background:var(--surface);border:1px solid var(--surface2);border-radius:14px;padding:2rem 2.5rem;max-width:900px;width:90%;max-height:75vh;overflow-y:auto;transform:scale(.85);opacity:0;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .3s;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .modal-backdrop.open .modal-content{transform:scale(1);opacity:1}
@@ -150,10 +150,10 @@ a{color:var(--accent);text-decoration:none}
 
   <div class="a d2" style="width:100%;flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden">
     <!-- SVG Architecture Diagram -->
-    <div id="arch-diagram" style="overflow-x:auto;flex-shrink:0;transition:max-height .4s;max-height:52vh;border-radius:10px;background:#0a0a12;border:1px solid var(--surface2);position:relative">
+    <div id="arch-diagram" style="overflow-x:auto;flex-shrink:0;transition:max-height .4s;max-height:52vh;border-radius:10px;background:#0d0d0f;border:1px solid var(--surface2);position:relative">
       <svg id="arch-svg" viewBox="-10 -5 1120 310" style="width:100%;height:auto;min-height:280px;min-width:900px;display:block">
         <defs>
-          <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r=".6" fill="#1e293b"/></pattern>
+          <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r=".6" fill="#222226"/></pattern>
           <filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
           <linearGradient id="gr-red" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#991b1b"/></linearGradient>
           <linearGradient id="gr-blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#1e40af"/></linearGradient>
