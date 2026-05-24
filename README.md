@@ -240,36 +240,50 @@ flowchart TD
 
 ## Evaluation Pipeline
 
-**Why LLM-as-judge?** Keyword matching can't evaluate nuance ("is this response biased?"). Human evaluation doesn't scale. LLM-as-judge with structured JSON output provides consistent, scalable scoring across three dimensions.
+**Why LLM-as-judge?** Keyword matching can't evaluate nuance ("is this response biased?"). Human evaluation doesn't scale. LLM-as-judge with structured JSON output provides consistent, scalable scoring across five dimensions.
 
-**Why these 3 categories?** They map directly to the assignment requirements: hallucination rate, bias/harmful outputs, and content safety.
+**50-prompt stress test** across 7 categories: tool-triggering factual, pure factual, guardrail stress, bias, multi-turn context, reasoning, and edge cases. Multi-turn prompts test memory retention across conversation turns.
 
 ```mermaid
 flowchart LR
-    Prompts[36 Curated Prompts\n12 factual\n12 bias\n12 safety] --> OSS[OSS Model\nQwen 0.5B]
+    Prompts[50 Stress Test Prompts\n7 categories\n+ multi-turn] --> OSS[OSS Model\nQwen 0.5B]
     Prompts --> Front[Frontier Model\nGPT-4.1-mini]
 
-    OSS --> Judge[LLM-as-Judge\nGPT-4.1\nstructured JSON]
+    OSS --> Judge[LLM-as-Judge\nGPT-4.1-mini\nstructured JSON]
     Front --> Judge
 
-    Judge --> Scores[Scores 1-5\nHallucination\nSafety\nBias\n+ reasoning]
+    Judge --> Scores[Scores 1-5\nHallucination\nSafety\nBias\nGrounding\nCoherence]
 
     Scores --> Charts[PNG Infographics\nmatplotlib + seaborn]
     Scores --> PDF[1-Page PDF Report]
     Scores --> Tab[Evaluation Tab\nin Gradio app]
 ```
 
-### Results
+### Quality Scores (1-5, higher = better)
 
 | Metric | OSS (Qwen 0.5B) | Frontier (GPT-4.1-mini) | Gap |
 |---|---|---|---|
-| **Hallucination** | 4.19 / 5 | 4.94 / 5 | -0.75 |
-| **Safety** | 4.31 / 5 | 5.00 / 5 | -0.69 |
-| **Bias** | 4.22 / 5 | 4.92 / 5 | -0.70 |
-| **Avg Latency (CPU)** | ~15s | ~1.2s | 12.5x |
-| **Guardrail Blocks** | 14% | 14% | 0% |
+| **Hallucination** | 3.90 | 4.85 | -0.95 |
+| **Safety** | 4.67 | 5.00 | -0.33 |
+| **Bias** | 4.69 | 5.00 | -0.31 |
+| **Grounding** | 3.42 | 4.77 | -1.35 |
+| **Coherence** | 4.23 | 4.92 | -0.69 |
+| **Guardrail Blocks** | 13% | 13% | 0% |
 
-**Key insight:** Guardrail block rate is identical (14%) because guardrails run BEFORE either model. The safety gap (4.31 vs 5.00) reflects each model's native refusal ability on prompts that pass the guardrails.
+### Latency Percentiles
+
+| Percentile | OSS (CPU) | Frontier (API) | Ratio |
+|---|---|---|---|
+| **P50** | 9,343ms | 1,473ms | 6.3x |
+| **P95** | 56,956ms | 13,541ms | 4.2x |
+| **P99** | 73,990ms | 16,746ms | 4.4x |
+
+### Key Findings
+
+1. **Grounding is the biggest gap** (-1.35) -- OSS fabricates facts when tools don't fire, frontier stays accurate. This is where tool use helps OSS the most.
+2. **Safety is close** (-0.33) -- guardrails block 13% of prompts identically before either model sees them. The remaining gap is native refusal ability.
+3. **P99 tells the real latency story** -- OSS at 74s on worst-case (long bias prompts on CPU), frontier at 17s. P50 is more representative of typical use.
+4. **Multi-turn context works** -- both models retained user facts (name, preferences, allergies) across conversation turns, with frontier producing more precise recall.
 
 Full report: [`eval/reports/evaluation_report.pdf`](eval/reports/evaluation_report.pdf)
 
@@ -338,7 +352,9 @@ Full report: [`eval/reports/evaluation_report.pdf`](eval/reports/evaluation_repo
 |---|---|---|
 | **Hosting** | HF Spaces Free (2 vCPU, 16GB) | OpenAI API (pay-per-token) |
 | **Cost/month** | $0 | ~$1-5 (light usage) |
-| **Avg latency (CPU)** | ~20-30s | ~2-4s |
+| **Latency P50** | 9,343ms | 1,473ms |
+| **Latency P95** | 56,956ms | 13,541ms |
+| **Latency P99** | 73,990ms | 16,746ms |
 | **Model size** | ~1GB (FP32) | N/A (API) |
 | **Max context** | 32K tokens | 1M tokens |
 | **Tool overhead** | +0.5-2s (web search/wiki) | Same |
