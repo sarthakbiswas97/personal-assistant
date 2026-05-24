@@ -135,40 +135,63 @@ class ToolRegistry:
     async def _chain(
         self, query: str, results: list[ToolResult]
     ) -> list[ToolResult]:
-        """Targeted chaining: wikipedia result + math intent → calculator.
+        """LLM-driven chaining: ask the LLM if tool results need computation.
 
-        If Wikipedia returned a number and the query has math intent
-        (division, multiplication, etc.), run calculator with the extracted data.
+        Pre-filter gates the LLM call to keep costs low. The LLM sees
+        both the query and tool results, giving it semantic context to
+        distinguish "divided by 47" (math) from "divided by borders" (metaphor).
         """
-        if "Calculator" in [r.tool_name for r in results]:
-            # Calculator already ran, no chaining needed
+        if not self._should_consider_chaining(results):
             return results
 
-        # Check if any result contains a number and query has math intent
-        math_intent = bool(re.search(
-            r"(?:divided|multiplied|times|plus|minus|per|ratio|average)",
-            query,
-            re.IGNORECASE,
-        ))
-        if not math_intent:
+        # Ask the LLM whether chaining is appropriate
+        decision = await self._router.validate_chain(query, results)
+
+        if not decision.should_chain or not decision.expression:
+            logger.info("Chain validator: no chaining needed (%s)", decision.reasoning)
             return results
 
-        # Look for numbers in successful results
-        for result in results:
-            if not result.success:
-                continue
-            # Extract numbers from result data
-            numbers = _extract_numbers_from_result(result)
-            if numbers and "Calculator" in self._tools:
-                # Build a math expression from the query context
-                calc_query = f"{query} (numbers from {result.tool_name}: {numbers})"
-                calc_result = await self._execute_one(calc_query, "Calculator")
-                if calc_result.success:
-                    results = [*results, calc_result]
-                    logger.info("Chained Calculator after %s", result.tool_name)
-                break
+        # Execute Calculator with the LLM-provided expression
+        if "Calculator" not in self._tools:
+            return results
 
+        calc_result = await self._execute_one(decision.expression, "Calculator")
+        if calc_result.success:
+            logger.info(
+                "Chained Calculator: %s = %s",
+                decision.expression,
+                calc_result.data.get("result", "?"),
+            )
+            return [*results, calc_result]
+
+        logger.warning("Chained Calculator failed on expression: %s", decision.expression)
         return results
+
+    @staticmethod
+    def _should_consider_chaining(results: list[ToolResult]) -> bool:
+        """Cheap pre-filter: is chaining even worth considering?
+
+        Only passes when:
+        - Calculator didn't already run (no point chaining to itself)
+        - At least one tool returned successful results
+        - Results contain numeric data (nothing to compute otherwise)
+        """
+        tool_names = [r.tool_name for r in results]
+
+        # Calculator already ran
+        if "Calculator" in tool_names:
+            return False
+
+        # No successful results
+        successful = [r for r in results if r.success]
+        if not successful:
+            return False
+
+        # No numbers in any result
+        has_numbers = any(
+            _result_has_numbers(r) for r in successful
+        )
+        return has_numbers
 
     @staticmethod
     def _format_context(results: list[ToolResult]) -> str:
@@ -190,15 +213,7 @@ class ToolRegistry:
         return context
 
 
-def _extract_numbers_from_result(result: ToolResult) -> list[float]:
-    """Extract numeric values from a tool result's data."""
-    numbers: list[float] = []
+def _result_has_numbers(result: ToolResult) -> bool:
+    """Check if a tool result contains any numeric values."""
     text = str(result.data)
-    for match in re.finditer(r"\b(\d{1,15}(?:\.\d+)?)\b", text):
-        try:
-            num = float(match.group(1))
-            if num > 1:  # Skip trivial numbers like 0, 1
-                numbers.append(num)
-        except ValueError:
-            continue
-    return numbers[:3]  # Cap at 3 numbers
+    return bool(re.search(r"\b\d{2,}\b", text))
