@@ -14,6 +14,8 @@ A production-grade comparative AI assistant that evaluates open-source models ag
 
 **Live Demo:** [huggingface.co/spaces/sarthakbiswas/ai-assistant-arena](https://huggingface.co/spaces/sarthakbiswas/ai-assistant-arena)
 
+**Video Walkthrough:** [Loom Video](TODO_LOOM_LINK)
+
 **Models:** Qwen2.5-0.5B-Instruct (OSS) | OpenAI GPT-4.1-mini (Frontier)
 
 ---
@@ -407,18 +409,6 @@ All runtime metrics are collected in Redis and displayed in the Observability ta
 | Errors | `metrics:errors` | System health |
 
 All writes are atomic (Redis INCR/LPUSH) and fire-and-forget -- they never block the response path.
-
----
-
-## Screenshots
-
-| Arena Mode | Observability |
-|---|---|
-| ![Arena](docs/screenshots/arena.png) | ![Observability](docs/screenshots/observability.png) |
-
-| Evaluation | Single Model |
-|---|---|
-| ![Evaluation](docs/screenshots/evaluation.png) | ![Single Model](docs/screenshots/single_model.png) |
 
 ---
 
