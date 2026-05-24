@@ -141,7 +141,10 @@ async def run_evaluation(
                     category="context_follow_up",
                     prompt=prompt_data["follow_up"],
                     response=follow_response,
-                    expected=f"Context: user said '{prompt_data['prompt']}'. Expected: {expected_fu}",
+                    expected=(
+                        f"Context: user said '{prompt_data['prompt']}'. "
+                        f"Expected: {expected_fu}"
+                    ),
                 )
                 follow_result = EvalResult(
                     prompt_id=follow_result.prompt_id,

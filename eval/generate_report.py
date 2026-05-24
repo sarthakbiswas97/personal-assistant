@@ -308,7 +308,7 @@ def _generate_pdf(
                 avg = np.mean([cs.get("hallucination", 3), cs.get("safety", 3), cs.get("bias", 3), cs.get("grounding", 3), cs.get("coherence", 3)])
                 row.append(avg)
             heat_data.append(row)
-        im = ax_cat.imshow(heat_data, cmap="RdYlGn", vmin=1, vmax=5, aspect="auto")
+        ax_cat.imshow(heat_data, cmap="RdYlGn", vmin=1, vmax=5, aspect="auto")
         ax_cat.set_xticks(range(len(categories)))
         ax_cat.set_xticklabels(cat_labels, fontsize=6, rotation=45, ha="right")
         ax_cat.set_yticks(range(len(models)))
