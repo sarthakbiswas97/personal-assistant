@@ -24,7 +24,8 @@ _KEYWORDS = [
 
 _PATTERNS = [
     re.compile(r"search\s+(for\s+)?", re.IGNORECASE),
-    re.compile(r"(latest|recent|current)\s+\w+", re.IGNORECASE),
+    re.compile(r"(latest|recent)\s+\w+", re.IGNORECASE),
+    re.compile(r"current\s+(events?|news|situation|status|state of)", re.IGNORECASE),
 ]
 
 _MAX_RESULTS = 3
