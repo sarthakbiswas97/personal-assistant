@@ -14,7 +14,7 @@ A production-grade comparative AI assistant that evaluates open-source models ag
 
 **Live Demo:** [huggingface.co/spaces/sarthakbiswas/ai-assistant-arena](https://huggingface.co/spaces/sarthakbiswas/ai-assistant-arena)
 
-**Video Walkthrough:** [Loom Video](TODO_LOOM_LINK)
+**Architecture Walkthrough:** [Interactive Presentation](https://sarthakbiswas97.github.io/personal-assistant/presentation.html)
 
 **Models:** Qwen2.5-0.5B-Instruct (OSS) | OpenAI GPT-4.1-mini (Frontier)
 
