@@ -75,9 +75,9 @@ a{color:var(--accent);text-decoration:none}
 .slide.active .a.sc-a{animation-name:fadeInScale}
 .slide.active .a.d1{animation-delay:.12s}.slide.active .a.d2{animation-delay:.25s}.slide.active .a.d3{animation-delay:.38s}.slide.active .a.d4{animation-delay:.5s}
 
-/* Component buttons */
-.comp-btn{background:var(--surface);border:1px solid var(--surface2);color:var(--text);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:500;transition:all .25s;font-family:inherit}
-.comp-btn:hover,.comp-btn.active{border-color:var(--accent);background:var(--surface2);box-shadow:0 2px 12px rgba(59,130,246,.15)}
+/* Mermaid clickable nodes */
+.mermaid .node{cursor:pointer!important}
+.mermaid{margin:0 auto}.mermaid svg{width:100%!important;height:auto!important;min-width:1000px}
 /* Detail cards */
 .d-row{display:flex;gap:.8rem;flex-wrap:wrap;margin:.5rem 0}
 .d-card{flex:1;min-width:180px;background:var(--bg);border-radius:8px;padding:.7rem;border:1px solid var(--surface2);text-align:left}
@@ -126,24 +126,62 @@ a{color:var(--accent);text-decoration:none}
 </div></div>
 
 <!-- 4: INTERACTIVE ARCHITECTURE -->
-<div class="slide" data-slide="3" style="padding:1rem 2rem;justify-content:flex-start;padding-top:2rem">
-  <h2 class="a" style="margin-bottom:.3rem">System Architecture</h2>
-  <p class="a d1" style="font-size:.78rem;margin-bottom:.5rem">Click any component in the diagram to explore its internals</p>
+<div class="slide" data-slide="3" style="padding:1rem 2rem;justify-content:flex-start;padding-top:1.5rem">
+  <h2 class="a" style="margin-bottom:.2rem">System Architecture</h2>
+  <p class="a d1" style="font-size:.75rem;margin-bottom:.4rem">Click any node in the diagram to explore its internals</p>
 
-  <div class="a d2" style="width:100%;flex:1;display:flex;flex-direction:column;min-height:0">
-    <!-- Component buttons row -->
-    <div style="display:flex;gap:.4rem;flex-wrap:wrap;justify-content:center;margin-bottom:.6rem">
-      <button class="comp-btn" onclick="toggleDetail(0)"><span class="tag tag-r">1</span> Input Guards</button>
-      <button class="comp-btn" onclick="toggleDetail(5)"><span class="tag tag-p">2</span> Context Mgmt</button>
-      <button class="comp-btn" onclick="toggleDetail(1)"><span class="tag tag-b">3</span> Tools</button>
-      <button class="comp-btn" onclick="toggleDetail(6)"><span class="tag tag-g">4</span> Models</button>
-      <button class="comp-btn" onclick="toggleDetail(3)"><span class="tag tag-r">5</span> Output Guards</button>
-      <button class="comp-btn" onclick="toggleDetail(4)"><span class="tag tag-o">6</span> Observability</button>
-      <button class="comp-btn" onclick="toggleDetail(2)"><span class="tag tag-p">7</span> Evaluation</button>
+  <div class="a d2" style="width:100%;flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden">
+    <!-- Mermaid diagram -->
+    <div id="arch-diagram" style="overflow-x:auto;flex-shrink:0;transition:max-height .4s;max-height:50vh">
+      <div class="mermaid" style="min-width:1000px">
+flowchart LR
+    User([User]) --> Guard{Input\nGuardrails}
+    Guard -->|blocked| Refuse([Refusal])
+    Guard -->|pass| Tools
+
+    subgraph Tools[Tool Orchestration]
+        direction TB
+        Router[Hybrid Router] --> WS[Web Search]
+        Router --> Wiki[Wikipedia]
+        Router --> Calc[Calculator]
+    end
+
+    Tools --> Mem
+
+    subgraph Mem[Context Management]
+        direction TB
+        WM[Working Memory] -->|overflow| Sum[Summarizer]
+        Sum --> Redis[(Redis)]
+    end
+
+    Mem --> Ctx[Context\nAssembly]
+    Ctx --> OSS[OSS\nQwen 0.5B]
+    Ctx --> Front[Frontier\nGPT-4.1]
+    OSS --> OG{Output\nGuard}
+    Front --> OG
+    OG --> Obs[Observability]
+    Obs --> Resp([Response])
+
+    click Guard call toggleDetail(0)
+    click Tools call toggleDetail(1)
+    click Router call toggleDetail(1)
+    click WS call toggleDetail(1)
+    click Wiki call toggleDetail(1)
+    click Calc call toggleDetail(1)
+    click Mem call toggleDetail(5)
+    click WM call toggleDetail(5)
+    click Sum call toggleDetail(5)
+    click Redis call toggleDetail(5)
+    click OSS call toggleDetail(6)
+    click Front call toggleDetail(6)
+    click OG call toggleDetail(3)
+    click Obs call toggleDetail(4)
+    click Ctx call toggleDetail(2)
+      </div>
     </div>
 
-    <!-- Detail panel (shows when a component is clicked) -->
-    <div id="arch-detail" style="display:none;width:100%;max-width:1000px;margin:0 auto;background:var(--surface);border:1px solid var(--surface2);border-radius:10px;padding:1.2rem 1.5rem;max-height:65vh;overflow-y:auto;position:relative">
+    <!-- Detail panel -->
+    <div id="arch-detail" style="display:none;width:100%;max-width:1050px;margin:.5rem auto 0;background:var(--surface);border:1px solid var(--surface2);border-radius:10px;padding:1.2rem 1.5rem;max-height:40vh;overflow-y:auto;position:relative">
       <button onclick="closeDetail()" style="position:absolute;top:8px;right:10px;background:var(--surface2);border:none;color:var(--muted);padding:3px 10px;border-radius:5px;cursor:pointer;font-size:.7rem">Close</button>
 
       <!-- 0: Input Guardrails -->
@@ -328,18 +366,16 @@ counter.textContent=`1 / ${slides.length}`;
 /* Architecture detail toggle */
 let activeDetail=-1;
 function toggleDetail(n){
-  const panel=document.getElementById('arch-detail');
-  const btns=document.querySelectorAll('.comp-btn');
   if(activeDetail===n){closeDetail();return}
+  const panel=document.getElementById('arch-detail');
+  const diagram=document.getElementById('arch-diagram');
   document.querySelectorAll('.dp').forEach(el=>el.style.display='none');
-  document.querySelector(`.dp[data-dp="${n}"]`).style.display='block';
-  panel.style.display='block';
-  btns.forEach((b,i)=>b.classList.toggle('active',i===[0,5,1,6,3,4,2].indexOf(n)));
-  activeDetail=n;mapExpanded=true;
+  const dp=document.querySelector(`.dp[data-dp="${n}"]`);
+  if(dp){dp.style.display='block';panel.style.display='block';diagram.style.maxHeight='28vh';activeDetail=n;mapExpanded=true}
 }
 function closeDetail(){
   document.getElementById('arch-detail').style.display='none';
-  document.querySelectorAll('.comp-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('arch-diagram').style.maxHeight='50vh';
   activeDetail=-1;mapExpanded=false;
 }
 </script>
