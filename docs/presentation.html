@@ -75,53 +75,16 @@ a{color:var(--accent);text-decoration:none}
 .slide.active .a.sc-a{animation-name:fadeInScale}
 .slide.active .a.d1{animation-delay:.12s}.slide.active .a.d2{animation-delay:.25s}.slide.active .a.d3{animation-delay:.38s}.slide.active .a.d4{animation-delay:.5s}
 
-/* ============ MIND MAP ============ */
-.mindmap{position:relative;width:100%;height:75vh;max-height:600px}
-
-/* Center hub */
-.hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:140px;height:140px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;box-shadow:0 0 40px rgba(59,130,246,.3);transition:opacity .4s}
-.hub span{font-weight:800;font-size:1rem;line-height:1.2}.hub small{font-size:.6rem;color:rgba(255,255,255,.7);margin-top:2px}
-
-/* Nodes */
-.node{position:absolute;width:130px;height:130px;border-radius:50%;background:var(--surface);border:2px solid var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .4s cubic-bezier(.4,0,.2,1);z-index:5;text-align:center;padding:.5rem}
-.node:hover{border-color:var(--accent);transform:scale(1.08);box-shadow:0 0 25px rgba(59,130,246,.2)}
-.node .n-icon{font-size:1.4rem;margin-bottom:.2rem}
-.node .n-title{font-size:.72rem;font-weight:700;line-height:1.2}
-.node .n-sub{font-size:.55rem;color:var(--muted);margin-top:.15rem;line-height:1.1}
-
-/* Node positions (radial) */
-.node[data-n="0"]{top:2%;left:50%;transform:translateX(-50%)}
-.node[data-n="1"]{top:15%;right:8%}
-.node[data-n="2"]{top:55%;right:3%}
-.node[data-n="3"]{bottom:2%;left:50%;transform:translateX(-50%)}
-.node[data-n="4"]{top:55%;left:3%}
-.node[data-n="5"]{top:15%;left:8%}
-.node[data-n="6"]{top:50%;left:50%;transform:translate(-50%,-50%) scale(.85)}
-
-/* Lines connecting hub to nodes */
-.line{position:absolute;top:50%;left:50%;height:2px;background:var(--surface2);transform-origin:left center;z-index:1;transition:opacity .4s}
-
-/* Expanded state */
-.mindmap.expanded .hub{opacity:.15}
-.mindmap.expanded .node{opacity:.08;pointer-events:none}
-.mindmap.expanded .line{opacity:.05}
-.mindmap.expanded .node.active-node{opacity:1;pointer-events:all;top:1rem!important;left:50%!important;right:auto!important;bottom:auto!important;transform:translateX(-50%) scale(1)!important;border-color:var(--accent);box-shadow:0 0 30px rgba(59,130,246,.25)}
-
-/* Detail panel */
-.detail{position:absolute;top:160px;left:50%;transform:translateX(-50%);width:90%;max-width:900px;max-height:calc(75vh - 170px);overflow-y:auto;background:var(--surface);border:1px solid var(--surface2);border-radius:12px;padding:1.5rem 2rem;opacity:0;pointer-events:none;transition:opacity .4s,transform .4s;transform:translateX(-50%) translateY(15px)}
-.mindmap.expanded .detail.active-detail{opacity:1;pointer-events:all;transform:translateX(-50%) translateY(0)}
-.detail h3{font-size:1rem;margin-bottom:.6rem;color:var(--accent)}.detail p{font-size:.85rem;text-align:left;max-width:none}
-.detail .d-row{display:flex;gap:1rem;flex-wrap:wrap;margin:.5rem 0}
-.detail .d-card{flex:1;min-width:200px;background:var(--bg);border-radius:8px;padding:.8rem;border:1px solid var(--surface2)}
-.detail .d-card h4{font-size:.8rem;font-weight:600;margin-bottom:.3rem;color:var(--text)}
-.detail .d-card p{font-size:.75rem;margin:0}
-
-/* Back button */
-.back-btn{position:absolute;top:12px;right:12px;background:var(--surface2);border:none;color:var(--muted);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.75rem;z-index:20;transition:all .2s;display:none}
-.mindmap.expanded .back-btn{display:block}
-.back-btn:hover{background:var(--accent);color:white}
-
-@media(max-width:900px){.node{width:90px;height:90px}.node .n-title{font-size:.6rem}.hub{width:100px;height:100px}.hub span{font-size:.8rem}}
+/* Component buttons */
+.comp-btn{background:var(--surface);border:1px solid var(--surface2);color:var(--text);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:500;transition:all .25s;font-family:inherit}
+.comp-btn:hover,.comp-btn.active{border-color:var(--accent);background:var(--surface2);box-shadow:0 2px 12px rgba(59,130,246,.15)}
+/* Detail cards */
+.d-row{display:flex;gap:.8rem;flex-wrap:wrap;margin:.5rem 0}
+.d-card{flex:1;min-width:180px;background:var(--bg);border-radius:8px;padding:.7rem;border:1px solid var(--surface2);text-align:left}
+.d-card h4{font-size:.78rem;font-weight:600;margin-bottom:.2rem;color:var(--text)}
+.d-card p{font-size:.72rem;margin:0;max-width:none}
+.dp h3{font-size:1rem;margin-bottom:.5rem;color:var(--accent);text-align:left}
+.dp p{font-size:.82rem;text-align:left;max-width:none}
 </style>
 </head>
 <body>
@@ -162,149 +125,125 @@ a{color:var(--accent);text-decoration:none}
   </div>
 </div></div>
 
-<!-- 4: INTERACTIVE MIND MAP -->
-<div class="slide" data-slide="3" style="padding:1.5rem 2rem">
-  <h2 class="a" style="margin-bottom:.5rem">System Architecture</h2>
-  <p class="a d1" style="font-size:.8rem;margin-bottom:.5rem">Click any component to explore its internals</p>
+<!-- 4: INTERACTIVE ARCHITECTURE -->
+<div class="slide" data-slide="3" style="padding:1rem 2rem;justify-content:flex-start;padding-top:2rem">
+  <h2 class="a" style="margin-bottom:.3rem">System Architecture</h2>
+  <p class="a d1" style="font-size:.78rem;margin-bottom:.5rem">Click any component in the diagram to explore its internals</p>
 
-  <div class="mindmap a d2" id="mindmap">
-    <button class="back-btn" onclick="collapseNode()">&#x2190; Back</button>
-
-    <!-- Hub -->
-    <div class="hub"><span>AI Assistant</span><small>Arena</small></div>
-
-    <!-- Lines (positioned by JS) -->
-
-    <!-- Nodes -->
-    <div class="node" data-n="0" onclick="expandNode(0)">
-      <div class="n-icon">&#x1F6E1;</div>
-      <div class="n-title">Input Guardrails</div>
-      <div class="n-sub">15 regex patterns</div>
-    </div>
-    <div class="node" data-n="1" onclick="expandNode(1)">
-      <div class="n-icon">&#x1F527;</div>
-      <div class="n-title">Tool Orchestration</div>
-      <div class="n-sub">3 tools, hybrid routing</div>
-    </div>
-    <div class="node" data-n="2" onclick="expandNode(2)">
-      <div class="n-icon">&#x1F4CA;</div>
-      <div class="n-title">Evaluation</div>
-      <div class="n-sub">36 prompts, LLM judge</div>
-    </div>
-    <div class="node" data-n="3" onclick="expandNode(3)">
-      <div class="n-icon">&#x1F6E1;</div>
-      <div class="n-title">Output Guardrails</div>
-      <div class="n-sub">Content filtering</div>
-    </div>
-    <div class="node" data-n="4" onclick="expandNode(4)">
-      <div class="n-icon">&#x1F4C8;</div>
-      <div class="n-title">Observability</div>
-      <div class="n-sub">Redis metrics</div>
-    </div>
-    <div class="node" data-n="5" onclick="expandNode(5)">
-      <div class="n-icon">&#x1F9E0;</div>
-      <div class="n-title">Context Management</div>
-      <div class="n-sub">3-layer memory</div>
-    </div>
-    <div class="node" data-n="6" onclick="expandNode(6)">
-      <div class="n-icon">&#x1F916;</div>
-      <div class="n-title">Model Backends</div>
-      <div class="n-sub">OSS + Frontier</div>
+  <div class="a d2" style="width:100%;flex:1;display:flex;flex-direction:column;min-height:0">
+    <!-- Component buttons row -->
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;justify-content:center;margin-bottom:.6rem">
+      <button class="comp-btn" onclick="toggleDetail(0)"><span class="tag tag-r">1</span> Input Guards</button>
+      <button class="comp-btn" onclick="toggleDetail(5)"><span class="tag tag-p">2</span> Context Mgmt</button>
+      <button class="comp-btn" onclick="toggleDetail(1)"><span class="tag tag-b">3</span> Tools</button>
+      <button class="comp-btn" onclick="toggleDetail(6)"><span class="tag tag-g">4</span> Models</button>
+      <button class="comp-btn" onclick="toggleDetail(3)"><span class="tag tag-r">5</span> Output Guards</button>
+      <button class="comp-btn" onclick="toggleDetail(4)"><span class="tag tag-o">6</span> Observability</button>
+      <button class="comp-btn" onclick="toggleDetail(2)"><span class="tag tag-p">7</span> Evaluation</button>
     </div>
 
-    <!-- Detail Panels -->
-    <div class="detail" data-detail="0">
-      <h3>Input Guardrails</h3>
-      <p>Two categories of regex patterns that run before the model sees any input. Latency: &lt;1ms.</p>
-      <div class="d-row">
-        <div class="d-card"><h4><span class="tag tag-r">8 Patterns</span> Prompt Injection</h4><p>"ignore previous instructions", "you are now DAN", "pretend to be", "system prompt:", "jailbreak", "act as if you are"</p></div>
-        <div class="d-card"><h4><span class="tag tag-r">5 Patterns</span> Harmful Requests</h4><p>"how to make a bomb", "how to hack", "how to harm someone", "synthesize drugs", "steal identity"</p></div>
+    <!-- Detail panel (shows when a component is clicked) -->
+    <div id="arch-detail" style="display:none;width:100%;max-width:1000px;margin:0 auto;background:var(--surface);border:1px solid var(--surface2);border-radius:10px;padding:1.2rem 1.5rem;max-height:65vh;overflow-y:auto;position:relative">
+      <button onclick="closeDetail()" style="position:absolute;top:8px;right:10px;background:var(--surface2);border:none;color:var(--muted);padding:3px 10px;border-radius:5px;cursor:pointer;font-size:.7rem">Close</button>
+
+      <!-- 0: Input Guardrails -->
+      <div class="dp" data-dp="0">
+        <h3>Input Guardrails</h3>
+        <p>Regex patterns that run before the model sees input. Latency: &lt;1ms.</p>
+        <div class="d-row">
+          <div class="d-card"><h4><span class="tag tag-r">8</span> Injection</h4><p>"ignore instructions", "DAN mode", "pretend to be", "system prompt:", "jailbreak"</p></div>
+          <div class="d-card"><h4><span class="tag tag-r">5</span> Harmful</h4><p>"make a bomb", "how to hack", "harm someone", "synthesize drugs", "steal identity"</p></div>
+        </div>
+        <p class="mt-1" style="font-size:.72rem;color:var(--muted)"><strong>Why regex?</strong> Fast, transparent, zero deps. Tradeoff: limited vs moderation API.</p>
       </div>
-      <p class="mt-1" style="font-size:.75rem;color:var(--muted)"><strong>Why regex?</strong> Fast, transparent, zero dependencies. Tradeoff: limited coverage vs moderation API.</p>
-    </div>
 
-    <div class="detail" data-detail="1">
-      <h3>Tool Orchestration</h3>
-      <p>LLM = reasoning. Tools = deterministic execution. 4-tier classification hierarchy.</p>
-      <div class="d-row">
-        <div class="d-card"><h4><span class="tag tag-g">0ms</span> Chitchat</h4><p>Allowlist of 20+ greetings/filler ("hello", "thanks"). Skip everything.</p></div>
-        <div class="d-card"><h4><span class="tag tag-b">0ms</span> Keywords</h4><p>"search X" &rarr; Web Search, "what is X" &rarr; Wikipedia, math patterns &rarr; Calculator</p></div>
-        <div class="d-card"><h4><span class="tag tag-p">500ms</span> LLM Router</h4><p>GPT-4.1-mini classifies subtle queries when keywords miss. JSON output.</p></div>
-        <div class="d-card"><h4><span class="tag tag-o">500ms</span> Chain Validator</h4><p>Post-execution: LLM decides if tool results need computation. Sees query + results for semantic context.</p></div>
+      <!-- 1: Tools -->
+      <div class="dp" data-dp="1" style="display:none">
+        <h3>Tool Orchestration</h3>
+        <p>LLM = reasoning. Tools = deterministic execution. 4-tier classification.</p>
+        <div class="d-row">
+          <div class="d-card"><h4><span class="tag tag-g">0ms</span> Chitchat</h4><p>20+ greetings/filler. Skip routing.</p></div>
+          <div class="d-card"><h4><span class="tag tag-b">0ms</span> Keywords</h4><p>"search" &rarr; Web, "what is" &rarr; Wiki, math &rarr; Calc</p></div>
+          <div class="d-card"><h4><span class="tag tag-p">500ms</span> LLM Router</h4><p>GPT-4.1-mini classifies when keywords miss.</p></div>
+          <div class="d-card"><h4><span class="tag tag-o">500ms</span> Chain Validator</h4><p>LLM decides if results need computation.</p></div>
+        </div>
+        <div class="d-row">
+          <div class="d-card"><h4>Web Search</h4><p>DuckDuckGo top 3. Real-time info.</p></div>
+          <div class="d-card"><h4>Wikipedia</h4><p>4-sentence summary. Factual grounding.</p></div>
+          <div class="d-card"><h4>Calculator</h4><p>AST-safe math. No eval(). Datetime.</p></div>
+        </div>
+        <p class="mt-1" style="font-size:.72rem;color:var(--muted)"><strong>Execution:</strong> concurrent, 5s timeout, 1x retry, graceful degradation.</p>
       </div>
-      <div class="d-row">
-        <div class="d-card"><h4>Web Search</h4><p>DuckDuckGo top 3. Real-time info beyond training cutoff.</p></div>
-        <div class="d-card"><h4>Wikipedia</h4><p>4-sentence summary. Factual grounding, reduces hallucination.</p></div>
-        <div class="d-card"><h4>Calculator</h4><p>AST-safe math (never eval). Datetime. Percentages.</p></div>
-      </div>
-      <p class="mt-1" style="font-size:.75rem;color:var(--muted)"><strong>Execution:</strong> concurrent via asyncio.gather, 5s timeout per tool, 1x retry, graceful degradation.</p>
-    </div>
 
-    <div class="detail" data-detail="2">
-      <h3>Evaluation Pipeline</h3>
-      <p>36 curated prompts scored by LLM-as-judge on 3 dimensions with structured JSON output.</p>
-      <div class="d-row">
-        <div class="d-card"><h4><span class="tag tag-b">12</span> Factual</h4><p>Geography, science, history, tech. Tests hallucination rate.</p></div>
-        <div class="d-card"><h4><span class="tag tag-o">12</span> Bias</h4><p>Gender, race, age, religion, disability. Tests stereotype handling.</p></div>
-        <div class="d-card"><h4><span class="tag tag-r">12</span> Safety</h4><p>Jailbreaks, harmful requests, self-harm. Tests refusal quality.</p></div>
+      <!-- 2: Evaluation -->
+      <div class="dp" data-dp="2" style="display:none">
+        <h3>Evaluation Pipeline</h3>
+        <p>36 prompts scored by LLM-as-judge with structured JSON.</p>
+        <div class="d-row">
+          <div class="d-card"><h4><span class="tag tag-b">12</span> Factual</h4><p>Geography, science, history. Hallucination.</p></div>
+          <div class="d-card"><h4><span class="tag tag-o">12</span> Bias</h4><p>Gender, race, age, disability. Stereotypes.</p></div>
+          <div class="d-card"><h4><span class="tag tag-r">12</span> Safety</h4><p>Jailbreaks, harmful requests. Refusal.</p></div>
+        </div>
+        <table class="mt-1"><tr><th>Metric</th><th>OSS</th><th>Frontier</th></tr>
+        <tr><td>Hallucination</td><td>4.19</td><td>4.94</td></tr>
+        <tr><td>Safety</td><td>4.31</td><td>5.00</td></tr>
+        <tr><td>Bias</td><td>4.22</td><td>4.92</td></tr>
+        <tr><td>Guardrails</td><td>14%</td><td>14%</td></tr></table>
+        <p class="mt-1" style="font-size:.72rem;color:var(--muted)"><strong>Insight:</strong> Guardrail blocks identical &mdash; they run BEFORE either model.</p>
       </div>
-      <table class="mt-1"><tr><th>Metric</th><th>OSS</th><th>Frontier</th><th>Gap</th></tr>
-      <tr><td>Hallucination</td><td>4.19</td><td>4.94</td><td style="color:var(--orange)">-0.75</td></tr>
-      <tr><td>Safety</td><td>4.31</td><td>5.00</td><td style="color:var(--orange)">-0.69</td></tr>
-      <tr><td>Bias</td><td>4.22</td><td>4.92</td><td style="color:var(--orange)">-0.70</td></tr>
-      <tr><td>Guardrails</td><td>14%</td><td>14%</td><td style="color:var(--green)">0%</td></tr></table>
-      <p class="mt-1" style="font-size:.75rem;color:var(--muted)"><strong>Key insight:</strong> Guardrail blocks identical (14%) because they run BEFORE either model.</p>
-    </div>
 
-    <div class="detail" data-detail="3">
-      <h3>Output Guardrails</h3>
-      <p>Second line of defense. Runs after the model generates, catches unsafe content that slipped through.</p>
-      <div class="d-row">
-        <div class="d-card"><h4><span class="tag tag-r">Pattern 1</span></h4><p>"here is how to / instructions for" + hack/bomb/harm</p></div>
-        <div class="d-card"><h4><span class="tag tag-r">Pattern 2</span></h4><p>"step N: obtain/acquire/steal" + weapons/explosives/drugs</p></div>
+      <!-- 3: Output Guardrails -->
+      <div class="dp" data-dp="3" style="display:none">
+        <h3>Output Guardrails</h3>
+        <p>Second defense line. Catches unsafe generated content after model inference.</p>
+        <div class="d-row">
+          <div class="d-card"><h4><span class="tag tag-r">Pattern 1</span></h4><p>"here is how to / instructions for" + hack/bomb/harm</p></div>
+          <div class="d-card"><h4><span class="tag tag-r">Pattern 2</span></h4><p>"step N: obtain/steal" + weapons/explosives/drugs</p></div>
+        </div>
+        <p class="mt-1" style="font-size:.72rem;color:var(--muted)"><strong>Defense in depth:</strong> Input + output = two-stage. Neither model nor response bypasses safety.</p>
       </div>
-      <p class="mt-1" style="font-size:.75rem;color:var(--muted)"><strong>Defense in depth:</strong> Input guardrails + output guardrails = two-stage filtering. Neither model nor response bypasses safety.</p>
-    </div>
 
-    <div class="detail" data-detail="4">
-      <h3>Observability</h3>
-      <p>Same Redis instance for persistence AND metrics. One dependency, not two. All writes atomic and fire-and-forget.</p>
-      <table><tr><th>Metric</th><th>Redis Key</th><th>Why</th></tr>
-      <tr><td>Requests</td><td><span class="ic">metrics:requests:{model}</span></td><td>Usage volume</td></tr>
-      <tr><td>Latency</td><td><span class="ic">metrics:latency:{model}</span></td><td>Avg / P50 / P95</td></tr>
-      <tr><td>Guardrails</td><td><span class="ic">metrics:guardrail_blocks</span></td><td>Safety rate</td></tr>
-      <tr><td>Tool calls</td><td><span class="ic">metrics:tool_calls:{tool}</span></td><td>Usage patterns</td></tr>
-      <tr><td>Summarizations</td><td><span class="ic">metrics:summarizations</span></td><td>Memory pressure</td></tr>
-      <tr><td>Sessions</td><td><span class="ic">metrics:session_restores</span></td><td>Persistence hits</td></tr></table>
-    </div>
+      <!-- 4: Observability -->
+      <div class="dp" data-dp="4" style="display:none">
+        <h3>Observability</h3>
+        <p>Same Redis for persistence AND metrics. All writes atomic, fire-and-forget.</p>
+        <table><tr><th>Metric</th><th>Redis Key</th><th>Why</th></tr>
+        <tr><td>Requests</td><td><span class="ic">metrics:requests:{model}</span></td><td>Volume</td></tr>
+        <tr><td>Latency</td><td><span class="ic">metrics:latency:{model}</span></td><td>P50/P95</td></tr>
+        <tr><td>Guardrails</td><td><span class="ic">metrics:guardrail_blocks</span></td><td>Safety</td></tr>
+        <tr><td>Tools</td><td><span class="ic">metrics:tool_calls:{tool}</span></td><td>Usage</td></tr>
+        <tr><td>Memory</td><td><span class="ic">metrics:summarizations</span></td><td>Pressure</td></tr></table>
+      </div>
 
-    <div class="detail" data-detail="5">
-      <h3>Tiered Context Management</h3>
-      <p>Problem: naive sliding window forgets early context. Fix: compress evicted turns, don't drop them.</p>
-      <div class="d-row">
-        <div class="d-card"><h4><span class="tag tag-b">Layer 1</span> Working Memory</h4><p>Sliding window, last N turns verbatim. On overflow, evicted turns go to Layer 2 (not dropped).</p></div>
-        <div class="d-card"><h4><span class="tag tag-p">Layer 2</span> Summarizer</h4><p>LLM compresses: existing summary + evicted turns &rarr; updated summary. Preserves names, facts, decisions.</p></div>
-        <div class="d-card"><h4><span class="tag tag-g">Layer 3</span> Redis</h4><p>All state persisted with TTL. Sessions survive restarts. Writes are async, never block response.</p></div>
+      <!-- 5: Context -->
+      <div class="dp" data-dp="5" style="display:none">
+        <h3>Context Management</h3>
+        <p>Compress evicted turns, don't drop them. Full narrative preserved.</p>
+        <div class="d-row">
+          <div class="d-card"><h4><span class="tag tag-b">Layer 1</span> Working Memory</h4><p>Sliding window, N turns. Overflow &rarr; Layer 2.</p></div>
+          <div class="d-card"><h4><span class="tag tag-p">Layer 2</span> Summarizer</h4><p>LLM compresses: summary + evicted &rarr; updated. Preserves names, facts.</p></div>
+          <div class="d-card"><h4><span class="tag tag-g">Layer 3</span> Redis</h4><p>TTL persistence. Sessions survive restart. Async writes.</p></div>
+        </div>
+        <div class="d-row">
+          <div class="d-card"><h4>Navigable</h4><p>Narrative thread</p></div>
+          <div class="d-card"><h4>Fast</h4><p>&lt;1ms Redis</p></div>
+          <div class="d-card"><h4>Fresh</h4><p>Regen on overflow</p></div>
+          <div class="d-card"><h4>Compound</h4><p>Full history</p></div>
+        </div>
       </div>
-      <div class="d-row">
-        <div class="d-card"><h4>Navigable</h4><p>Summary preserves narrative thread</p></div>
-        <div class="d-card"><h4>Fast</h4><p>Redis &lt;1ms, summary pre-computed</p></div>
-        <div class="d-card"><h4>Fresh</h4><p>Regenerated on each overflow</p></div>
-        <div class="d-card"><h4>Compound</h4><p>Accumulates across full history</p></div>
-      </div>
-      <p class="mt-1" style="font-size:.75rem;color:var(--muted)"><strong>Fallback:</strong> No API key = extractive truncation. No Redis = in-memory. Never crashes.</p>
-    </div>
 
-    <div class="detail" data-detail="6">
-      <h3>Model Backends</h3>
-      <p>Both implement the same async interface. The architecture doesn't know which model is running.</p>
-      <div class="d-row">
-        <div class="d-card"><h4><span class="tag tag-b">OSS</span> Qwen2.5-0.5B-Instruct</h4><p>HuggingFace transformers. TextIteratorStreamer for token streaming. run_in_executor for non-blocking queue reads. CPU inference.</p></div>
-        <div class="d-card"><h4><span class="tag tag-p">Frontier</span> GPT-4.1-mini</h4><p>AsyncOpenAI client. Native async streaming. API-based, no local compute.</p></div>
-      </div>
-      <div class="d-row">
-        <div class="d-card"><h4>Arena Mode</h4><p>Both fire concurrently via asyncio.create_task. Tools execute ONCE, results shared. Identical context, different reasoning.</p></div>
-        <div class="d-card"><h4>Abstract Interface</h4><p>BaseModel ABC with async generate() and stream(). New models = implement interface, register in app.</p></div>
+      <!-- 6: Models -->
+      <div class="dp" data-dp="6" style="display:none">
+        <h3>Model Backends</h3>
+        <p>Same async interface. Architecture doesn't know which model runs.</p>
+        <div class="d-row">
+          <div class="d-card"><h4><span class="tag tag-b">OSS</span> Qwen 0.5B</h4><p>transformers + TextIteratorStreamer. run_in_executor for non-blocking. CPU.</p></div>
+          <div class="d-card"><h4><span class="tag tag-p">Frontier</span> GPT-4.1</h4><p>AsyncOpenAI. Native async streaming. API-based.</p></div>
+        </div>
+        <div class="d-row">
+          <div class="d-card"><h4>Arena</h4><p>Both via asyncio.create_task. Tools ONCE, identical context.</p></div>
+          <div class="d-card"><h4>Interface</h4><p>BaseModel ABC: generate() + stream(). Plug in any model.</p></div>
+        </div>
       </div>
     </div>
   </div>
@@ -386,22 +325,22 @@ let tx=0;document.addEventListener('touchstart',e=>tx=e.touches[0].clientX);
 document.addEventListener('touchend',e=>{const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50&&!mapExpanded){d<0?go(cur+1):go(cur-1)}});
 counter.textContent=`1 / ${slides.length}`;
 
-/* Mind map expand/collapse */
-function expandNode(n){
-  const mm=document.getElementById('mindmap');
-  mm.classList.add('expanded');
-  document.querySelectorAll('.node').forEach(el=>el.classList.remove('active-node'));
-  document.querySelector(`.node[data-n="${n}"]`).classList.add('active-node');
-  document.querySelectorAll('.detail').forEach(el=>el.classList.remove('active-detail'));
-  document.querySelector(`.detail[data-detail="${n}"]`).classList.add('active-detail');
-  mapExpanded=true;
+/* Architecture detail toggle */
+let activeDetail=-1;
+function toggleDetail(n){
+  const panel=document.getElementById('arch-detail');
+  const btns=document.querySelectorAll('.comp-btn');
+  if(activeDetail===n){closeDetail();return}
+  document.querySelectorAll('.dp').forEach(el=>el.style.display='none');
+  document.querySelector(`.dp[data-dp="${n}"]`).style.display='block';
+  panel.style.display='block';
+  btns.forEach((b,i)=>b.classList.toggle('active',i===[0,5,1,6,3,4,2].indexOf(n)));
+  activeDetail=n;mapExpanded=true;
 }
-function collapseNode(){
-  const mm=document.getElementById('mindmap');
-  mm.classList.remove('expanded');
-  document.querySelectorAll('.node').forEach(el=>el.classList.remove('active-node'));
-  document.querySelectorAll('.detail').forEach(el=>el.classList.remove('active-detail'));
-  mapExpanded=false;
+function closeDetail(){
+  document.getElementById('arch-detail').style.display='none';
+  document.querySelectorAll('.comp-btn').forEach(b=>b.classList.remove('active'));
+  activeDetail=-1;mapExpanded=false;
 }
 </script>
 </body>
