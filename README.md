@@ -364,9 +364,10 @@ Full report: [`eval/reports/evaluation_report.pdf`](eval/reports/evaluation_repo
 ## What I Would Improve With More Time
 
 1. **Vector-based long-term memory** -- semantic search over conversation history using Redis Search embeddings for retrieval beyond the summary window
-2. **Moderation API** -- replace regex guardrails with OpenAI Moderation for broader coverage and fewer false positives
-3. **Quantized OSS model** -- GPTQ/AWQ 4-bit quantization for ~3-5x CPU inference speedup
-4. **Streaming in arena mode** -- custom frontend bypassing Gradio's SSE proxy to enable independent per-model rendering
-5. **Paid search API** -- replace DuckDuckGo (rate-limited) with Serper/Tavily for reliable web search
-6. **LLM-driven tool routing** -- fine-tuned small classifier model replacing keyword heuristic for more reliable tool selection
+2. **Moderation API** -- replace regex guardrails with OpenAI Moderation or LlamaGuard for broader coverage and fewer false positives
+3. **Quantized OSS model** -- GPTQ/AWQ 4-bit quantization for ~3-5x CPU inference speedup and lower memory footprint
+4. **Streaming in arena mode** -- custom frontend bypassing Gradio's SSE proxy to enable truly independent per-model rendering
+5. **Paid search API** -- replace DuckDuckGo (rate-limited) with Serper/Tavily for reliable real-time web search
+6. **Zero-shot intent classifier** -- small local model (e.g., BART-MNLI) replacing keyword heuristic for context-aware tool routing without LLM API cost
 7. **Batched evaluation** -- concurrent prompt execution via `asyncio.gather()` to reduce eval time from ~10 min to ~2 min
+8. **ReAct agent loop** -- multi-step reason → tool → observe → reason cycle for complex queries requiring iterative tool use
