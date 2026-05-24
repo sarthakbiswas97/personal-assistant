@@ -13,6 +13,15 @@ from typing import Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
+class ChainDecision:
+    """Immutable result of LLM chain validation."""
+
+    should_chain: bool
+    expression: str = ""
+    reasoning: str = ""
+
+
+@dataclass(frozen=True)
 class ToolResult:
     """Immutable result of a tool execution."""
 

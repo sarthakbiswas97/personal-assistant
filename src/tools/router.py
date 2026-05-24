@@ -13,7 +13,7 @@ import logging
 
 from openai import AsyncOpenAI
 
-from src.tools.base import Tool
+from src.tools.base import ChainDecision, Tool, ToolResult
 
 # Queries that never need tools — skip LLM fallback entirely.
 # Keyword heuristic still runs (in case someone says "search" as a greeting).
@@ -29,6 +29,26 @@ _CHITCHAT = frozenset({
 })
 
 logger = logging.getLogger(__name__)
+
+_LLM_CHAIN_PROMPT = """\
+You are a tool chain validator. Given a user query and tool results that have \
+already been retrieved, decide if the Calculator tool should be called to \
+perform a mathematical computation on the retrieved data.
+
+ONLY say yes if the user is clearly asking for a numeric computation \
+(division, multiplication, percentage, ratio, average, etc.) using data \
+from the tool results.
+
+Do NOT say yes if:
+- The query uses math words metaphorically ("divided by borders", "times have changed")
+- The query mentions numbers as dates, IDs, or labels (not for computation)
+- There is no clear arithmetic operation requested
+
+Respond with JSON:
+- If computation needed: {{"chain": true, "expression": "<exact math expression>", \
+"reasoning": "<why>"}}
+- If not: {{"chain": false, "reasoning": "<why not>"}}\
+"""
 
 _LLM_ROUTER_PROMPT = """\
 You are a tool router. Given a user query, decide which tools (if any) should be called.
@@ -141,6 +161,61 @@ class ToolRouter:
         # Slow path: LLM classification for substantive queries
         matched = await self.route_llm(query, tools)
         return matched
+
+    async def validate_chain(
+        self, query: str, results: list[ToolResult]
+    ) -> ChainDecision:
+        """Ask the LLM whether tool results should be chained into Calculator.
+
+        The LLM sees both the query and the tool results, giving it full
+        semantic context to distinguish "divided by 47" (math) from
+        "divided by borders" (metaphor).
+
+        Returns ChainDecision(should_chain=False) on any failure.
+        """
+        if self._client is None:
+            return ChainDecision(should_chain=False, reasoning="No API key")
+
+        # Build context from tool results
+        results_text = "\n".join(
+            f"[{r.tool_name}]: {r.data}" for r in results if r.success
+        )
+
+        user_content = (
+            f"User query: {query}\n\n"
+            f"Tool results already retrieved:\n{results_text}"
+        )
+
+        try:
+            response = await self._client.chat.completions.create(
+                model=self._model_name,
+                messages=[
+                    {"role": "system", "content": _LLM_CHAIN_PROMPT},
+                    {"role": "user", "content": user_content},
+                ],
+                response_format={"type": "json_object"},
+                max_tokens=100,
+                temperature=0,
+            )
+
+            raw = response.choices[0].message.content or "{}"
+            result = json.loads(raw)
+
+            decision = ChainDecision(
+                should_chain=bool(result.get("chain", False)),
+                expression=result.get("expression", ""),
+                reasoning=result.get("reasoning", ""),
+            )
+            logger.info(
+                "Chain validator: chain=%s, expression='%s', reason='%s'",
+                decision.should_chain,
+                decision.expression,
+                decision.reasoning,
+            )
+            return decision
+        except Exception:
+            logger.warning("Chain validation failed, skipping chain", exc_info=True)
+            return ChainDecision(should_chain=False, reasoning="LLM call failed")
 
     @staticmethod
     def _is_chitchat(query: str) -> bool:
