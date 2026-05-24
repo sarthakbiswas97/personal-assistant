@@ -75,8 +75,10 @@ a{color:var(--accent);text-decoration:none}
 .slide.active .a.sc-a{animation-name:fadeInScale}
 .slide.active .a.d1{animation-delay:.12s}.slide.active .a.d2{animation-delay:.25s}.slide.active .a.d3{animation-delay:.38s}.slide.active .a.d4{animation-delay:.5s}
 
-/* Mermaid clickable nodes */
-.mermaid .node{cursor:pointer!important}
+/* Component buttons */
+.comp-btn{background:var(--surface);border:1px solid var(--surface2);color:var(--text);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:500;transition:all .25s;font-family:inherit}
+.comp-btn:hover,.comp-btn.active{border-color:var(--accent);background:var(--surface2);box-shadow:0 2px 12px rgba(59,130,246,.15)}
+/* Mermaid */
 .mermaid{margin:0 auto}.mermaid svg{width:100%!important;height:auto!important;min-width:1000px}
 /* Detail cards */
 .d-row{display:flex;gap:.8rem;flex-wrap:wrap;margin:.5rem 0}
@@ -132,28 +134,24 @@ a{color:var(--accent);text-decoration:none}
 
   <div class="a d2" style="width:100%;flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden">
     <!-- Mermaid diagram -->
-    <div id="arch-diagram" style="overflow-x:auto;flex-shrink:0;transition:max-height .4s;max-height:50vh">
+    <div id="arch-diagram" style="overflow-x:auto;flex-shrink:0;transition:max-height .4s;max-height:45vh">
       <div class="mermaid" style="min-width:1000px">
 flowchart LR
     User([User]) --> Guard{Input\nGuardrails}
     Guard -->|blocked| Refuse([Refusal])
     Guard -->|pass| Tools
-
     subgraph Tools[Tool Orchestration]
         direction TB
         Router[Hybrid Router] --> WS[Web Search]
         Router --> Wiki[Wikipedia]
         Router --> Calc[Calculator]
     end
-
     Tools --> Mem
-
     subgraph Mem[Context Management]
         direction TB
         WM[Working Memory] -->|overflow| Sum[Summarizer]
         Sum --> Redis[(Redis)]
     end
-
     Mem --> Ctx[Context\nAssembly]
     Ctx --> OSS[OSS\nQwen 0.5B]
     Ctx --> Front[Frontier\nGPT-4.1]
@@ -161,27 +159,22 @@ flowchart LR
     Front --> OG
     OG --> Obs[Observability]
     Obs --> Resp([Response])
-
-    click Guard call toggleDetail(0)
-    click Tools call toggleDetail(1)
-    click Router call toggleDetail(1)
-    click WS call toggleDetail(1)
-    click Wiki call toggleDetail(1)
-    click Calc call toggleDetail(1)
-    click Mem call toggleDetail(5)
-    click WM call toggleDetail(5)
-    click Sum call toggleDetail(5)
-    click Redis call toggleDetail(5)
-    click OSS call toggleDetail(6)
-    click Front call toggleDetail(6)
-    click OG call toggleDetail(3)
-    click Obs call toggleDetail(4)
-    click Ctx call toggleDetail(2)
       </div>
     </div>
 
+    <!-- Component buttons -->
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;justify-content:center;margin:.5rem 0">
+      <button class="comp-btn" onclick="toggleDetail(0)">Input Guardrails</button>
+      <button class="comp-btn" onclick="toggleDetail(1)">Tool Orchestration</button>
+      <button class="comp-btn" onclick="toggleDetail(5)">Context Management</button>
+      <button class="comp-btn" onclick="toggleDetail(6)">Model Backends</button>
+      <button class="comp-btn" onclick="toggleDetail(3)">Output Guardrails</button>
+      <button class="comp-btn" onclick="toggleDetail(4)">Observability</button>
+      <button class="comp-btn" onclick="toggleDetail(2)">Evaluation</button>
+    </div>
+
     <!-- Detail panel -->
-    <div id="arch-detail" style="display:none;width:100%;max-width:1050px;margin:.5rem auto 0;background:var(--surface);border:1px solid var(--surface2);border-radius:10px;padding:1.2rem 1.5rem;max-height:40vh;overflow-y:auto;position:relative">
+    <div id="arch-detail" style="display:none;width:100%;max-width:1050px;margin:0 auto;background:var(--surface);border:1px solid var(--surface2);border-radius:10px;padding:1.2rem 1.5rem;max-height:35vh;overflow-y:auto;position:relative">
       <button onclick="closeDetail()" style="position:absolute;top:8px;right:10px;background:var(--surface2);border:none;color:var(--muted);padding:3px 10px;border-radius:5px;cursor:pointer;font-size:.7rem">Close</button>
 
       <!-- 0: Input Guardrails -->
@@ -371,11 +364,12 @@ function toggleDetail(n){
   const diagram=document.getElementById('arch-diagram');
   document.querySelectorAll('.dp').forEach(el=>el.style.display='none');
   const dp=document.querySelector(`.dp[data-dp="${n}"]`);
-  if(dp){dp.style.display='block';panel.style.display='block';diagram.style.maxHeight='28vh';activeDetail=n;mapExpanded=true}
+  if(dp){dp.style.display='block';panel.style.display='block';diagram.style.maxHeight='22vh';activeDetail=n;mapExpanded=true;document.querySelectorAll('.comp-btn').forEach(b=>b.classList.remove('active'));event&&event.target&&event.target.classList.add('active')}
 }
 function closeDetail(){
   document.getElementById('arch-detail').style.display='none';
-  document.getElementById('arch-diagram').style.maxHeight='50vh';
+  document.getElementById('arch-diagram').style.maxHeight='45vh';
+  document.querySelectorAll('.comp-btn').forEach(b=>b.classList.remove('active'));
   activeDetail=-1;mapExpanded=false;
 }
 </script>
