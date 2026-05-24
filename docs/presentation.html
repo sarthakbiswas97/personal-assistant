@@ -475,7 +475,7 @@ let cur=0,mapExpanded=false;
 slides.forEach((_,i)=>{const d=document.createElement('div');d.className='dot'+(i===0?' active':'');d.onclick=()=>go(i);nav.appendChild(d)});
 function go(n){if(n<0||n>=slides.length||mapExpanded)return;slides[cur].classList.remove('active');cur=n;slides[cur].classList.add('active');document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));counter.textContent=`${cur+1} / ${slides.length}`}
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'&&mapExpanded){collapseNode();return}
+  if(e.key==='Escape'&&activeDetail!==-1){closeDetail();return}
   if(e.key==='ArrowRight'||e.key===' ')go(cur+1);
   if(e.key==='ArrowLeft')go(cur-1);
 });
