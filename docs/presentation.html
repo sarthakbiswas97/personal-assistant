@@ -4,280 +4,405 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Assistant Arena - Architecture Walkthrough</title>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0f172a;--surface:#1e293b;--surface2:#334155;--accent:#3b82f6;--accent2:#8b5cf6;--green:#22c55e;--orange:#f97316;--red:#ef4444;--text:#f1f5f9;--muted:#94a3b8}
-body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh}
+
+/* Slide system */
 .deck{position:relative;height:100vh;width:100vw}
-.slide{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:3rem 4rem;opacity:0;transform:translateY(30px) scale(0.97);transition:opacity .6s cubic-bezier(.4,0,.2,1),transform .6s cubic-bezier(.4,0,.2,1);pointer-events:none}
-.slide.active{opacity:1;transform:translateY(0) scale(1);pointer-events:all}
-.slide.prev{opacity:0;transform:translateY(-30px) scale(0.97)}
-.sc{max-width:1100px;width:100%;text-align:center}
-.sc .row{justify-content:center}
-.sc table{margin:0 auto}
-.sc p{margin-left:auto;margin-right:auto}
-.nav{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);display:flex;gap:.5rem;z-index:100}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:3rem 4rem;opacity:0;transform:translateY(25px);transition:opacity .5s,transform .5s;pointer-events:none}
+.slide.active{opacity:1;transform:none;pointer-events:all}
+.sc{max-width:1100px;width:100%;text-align:center;display:flex;flex-direction:column;align-items:center}
+.sc .row{justify-content:center;width:100%}
+
+/* Nav */
+.nav{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);display:flex;gap:.4rem;z-index:200}
 .nav .dot{width:10px;height:10px;border-radius:50%;background:var(--surface2);cursor:pointer;transition:all .3s}
-.nav .dot.active{background:var(--accent);width:28px;border-radius:5px}
-.slide-counter{position:fixed;bottom:2rem;right:3rem;color:var(--muted);font-size:.85rem;z-index:100}
-.key-hint{position:fixed;bottom:2rem;left:3rem;color:var(--muted);font-size:.75rem;z-index:100}
-h1{font-size:3.2rem;font-weight:800;line-height:1.1;margin-bottom:1rem;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-h2{font-size:2.2rem;font-weight:700;margin-bottom:1.5rem;color:var(--accent)}
-h3{font-size:1.2rem;font-weight:600;margin-bottom:.5rem;color:var(--text)}
-p{font-size:1rem;color:var(--muted);line-height:1.7;max-width:800px}
-.hl{color:var(--accent)}.hl-g{color:var(--green)}.hl-o{color:var(--orange)}.hl-p{color:var(--accent2)}
-.row{display:flex;gap:2rem;align-items:flex-start;flex-wrap:wrap}
-.col{flex:1;min-width:280px;text-align:left}
-.mt-1{margin-top:1rem}.mt-2{margin-top:2rem}.mb-1{margin-bottom:1rem}.mb-2{margin-bottom:2rem}
-.card{background:var(--surface);border:1px solid var(--surface2);border-radius:12px;padding:1.5rem;transition:all .3s cubic-bezier(.4,0,.2,1)}
-.card:hover{border-color:var(--accent);transform:translateY(-4px);box-shadow:0 8px 30px rgba(59,130,246,0.15)}
-.card h3{font-size:1rem;margin-bottom:.4rem}.card p{font-size:.85rem;color:var(--muted)}
-.card-icon{font-size:1.5rem;margin-bottom:.5rem;transition:transform .3s}.card:hover .card-icon{transform:scale(1.2)}
-table{border-collapse:collapse;width:100%;font-size:.9rem;max-width:800px}
-th{background:var(--accent);color:white;padding:.6rem 1rem;text-align:left;font-weight:600}
-td{padding:.6rem 1rem;border-bottom:1px solid var(--surface2);text-align:left}
-tr:hover{background:var(--surface)}
-.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:600;margin-right:.3rem}
+.nav .dot.active{background:var(--accent);width:26px;border-radius:5px}
+.slide-counter{position:fixed;bottom:2rem;right:3rem;color:var(--muted);font-size:.85rem;z-index:200}
+.key-hint{position:fixed;bottom:2rem;left:3rem;color:var(--muted);font-size:.7rem;z-index:200}
+
+/* Typography */
+h1{font-size:3.2rem;font-weight:800;margin-bottom:.8rem;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+h2{font-size:2rem;font-weight:700;margin-bottom:1.2rem;color:var(--accent)}
+h3{font-size:1.1rem;font-weight:600;margin-bottom:.4rem}
+p{font-size:.95rem;color:var(--muted);line-height:1.7;max-width:800px;margin:0 auto}
+.hl{color:var(--accent)}.hl-p{color:var(--accent2)}.hl-g{color:var(--green)}.hl-o{color:var(--orange)}
+
+/* Layout */
+.row{display:flex;gap:1.5rem;flex-wrap:wrap;align-items:stretch;justify-content:center}
+.col{flex:1;min-width:260px;text-align:left}
+.mt-1{margin-top:.8rem}.mt-2{margin-top:1.5rem}.mb-1{margin-bottom:.8rem}.mb-2{margin-bottom:1.5rem}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--surface2);border-radius:10px;padding:1.3rem;transition:all .3s}
+.card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 6px 25px rgba(59,130,246,.12)}
+.card h3{font-size:.95rem;margin-bottom:.3rem}.card p{font-size:.82rem}
+.card-icon{font-size:1.4rem;margin-bottom:.4rem}
+
+/* Tags */
+.tag{display:inline-block;padding:2px 7px;border-radius:8px;font-size:.65rem;font-weight:600;margin-right:.2rem}
 .tag-b{background:#1e3a5f;color:#60a5fa}.tag-g{background:#14532d;color:#4ade80}.tag-r{background:#4c1d1d;color:#f87171}.tag-p{background:#3b1f5e;color:#c084fc}.tag-o{background:#4a2c17;color:#fb923c}
-.flow{display:flex;align-items:center;gap:.5rem;margin:.4rem 0;padding:.6rem 1rem;border-radius:8px;font-size:.85rem;background:var(--surface);border-left:3px solid var(--surface2);transition:all .3s;text-align:left}
-.flow.af{border-left-color:var(--accent);background:var(--surface2)}
-.fa{color:var(--accent);font-weight:bold}
-.ec{background:var(--surface);border-radius:10px;padding:1rem;margin:.6rem 0;border-left:4px solid var(--red);text-align:left}
+
+/* Edge cases */
+.ec{background:var(--surface);border-radius:8px;padding:.8rem;margin:.5rem 0;border-left:3px solid var(--red);text-align:left}
 .ec.ok{border-left-color:var(--green)}
-.ec .q{font-family:monospace;color:var(--orange);font-size:.85rem}.ec .v{font-weight:600;margin-top:.4rem;font-size:.8rem}
-.stat{text-align:center;padding:1.5rem}
-.stat-n{font-size:2.8rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.stat-l{color:var(--muted);font-size:.85rem;margin-top:.25rem}
-.ic{background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:.8rem;font-family:monospace}
-@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fadeInScale{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
-.a{opacity:0}
-.slide.active .a{animation:fadeInUp .7s cubic-bezier(.4,0,.2,1) forwards}
+.ec .q{font-family:monospace;color:var(--orange);font-size:.8rem}.ec .v{font-weight:600;margin-top:.3rem;font-size:.75rem}
+
+/* Stats */
+.stat{text-align:center;padding:1.2rem}
+.stat-n{font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-l{color:var(--muted);font-size:.8rem;margin-top:.2rem}
+
+/* Tables */
+table{border-collapse:collapse;font-size:.82rem;width:100%;max-width:700px;margin:0 auto}
+th{background:var(--accent);color:white;padding:.5rem .8rem;text-align:left;font-weight:600}
+td{padding:.5rem .8rem;border-bottom:1px solid var(--surface2);text-align:left}
+
+/* Inline code */
+.ic{background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:.75rem;font-family:monospace}
+
+/* Button */
+.btn{display:inline-block;padding:.9rem 2rem;background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;border-radius:10px;font-size:1.1rem;font-weight:600;text-decoration:none!important;transition:transform .2s,box-shadow .3s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(59,130,246,.25)}
+a{color:var(--accent);text-decoration:none}
+
+/* Animations */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(25px)}to{opacity:1;transform:none}}
+@keyframes fadeInScale{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+.a{opacity:0}.slide.active .a{animation:fadeInUp .6s cubic-bezier(.4,0,.2,1) forwards}
 .slide.active .a.sc-a{animation-name:fadeInScale}
-.slide.active .a.d1{animation-delay:.15s}.slide.active .a.d2{animation-delay:.3s}.slide.active .a.d3{animation-delay:.45s}.slide.active .a.d4{animation-delay:.6s}
-.mermaid{margin:1rem auto;max-width:900px}.mermaid svg{max-width:100%!important}
-a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
-.btn{display:inline-block;padding:1rem 2.5rem;background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;border-radius:12px;font-size:1.2rem;font-weight:600;text-decoration:none!important;transition:transform .2s,box-shadow .3s}
-.btn:hover{transform:translateY(-2px);box-shadow:0 10px 40px rgba(59,130,246,0.3)}
-@media(max-width:900px){.slide{padding:2rem}.row{flex-direction:column}h1{font-size:2rem}h2{font-size:1.5rem}.col{min-width:auto}}
+.slide.active .a.d1{animation-delay:.12s}.slide.active .a.d2{animation-delay:.25s}.slide.active .a.d3{animation-delay:.38s}.slide.active .a.d4{animation-delay:.5s}
+
+/* ============ MIND MAP ============ */
+.mindmap{position:relative;width:100%;height:75vh;max-height:600px}
+
+/* Center hub */
+.hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:140px;height:140px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;box-shadow:0 0 40px rgba(59,130,246,.3);transition:opacity .4s}
+.hub span{font-weight:800;font-size:1rem;line-height:1.2}.hub small{font-size:.6rem;color:rgba(255,255,255,.7);margin-top:2px}
+
+/* Nodes */
+.node{position:absolute;width:130px;height:130px;border-radius:50%;background:var(--surface);border:2px solid var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .4s cubic-bezier(.4,0,.2,1);z-index:5;text-align:center;padding:.5rem}
+.node:hover{border-color:var(--accent);transform:scale(1.08);box-shadow:0 0 25px rgba(59,130,246,.2)}
+.node .n-icon{font-size:1.4rem;margin-bottom:.2rem}
+.node .n-title{font-size:.72rem;font-weight:700;line-height:1.2}
+.node .n-sub{font-size:.55rem;color:var(--muted);margin-top:.15rem;line-height:1.1}
+
+/* Node positions (radial) */
+.node[data-n="0"]{top:2%;left:50%;transform:translateX(-50%)}
+.node[data-n="1"]{top:15%;right:8%}
+.node[data-n="2"]{top:55%;right:3%}
+.node[data-n="3"]{bottom:2%;left:50%;transform:translateX(-50%)}
+.node[data-n="4"]{top:55%;left:3%}
+.node[data-n="5"]{top:15%;left:8%}
+.node[data-n="6"]{top:50%;left:50%;transform:translate(-50%,-50%) scale(.85)}
+
+/* Lines connecting hub to nodes */
+.line{position:absolute;top:50%;left:50%;height:2px;background:var(--surface2);transform-origin:left center;z-index:1;transition:opacity .4s}
+
+/* Expanded state */
+.mindmap.expanded .hub{opacity:.15}
+.mindmap.expanded .node{opacity:.08;pointer-events:none}
+.mindmap.expanded .line{opacity:.05}
+.mindmap.expanded .node.active-node{opacity:1;pointer-events:all;top:1rem!important;left:50%!important;right:auto!important;bottom:auto!important;transform:translateX(-50%) scale(1)!important;border-color:var(--accent);box-shadow:0 0 30px rgba(59,130,246,.25)}
+
+/* Detail panel */
+.detail{position:absolute;top:160px;left:50%;transform:translateX(-50%);width:90%;max-width:900px;max-height:calc(75vh - 170px);overflow-y:auto;background:var(--surface);border:1px solid var(--surface2);border-radius:12px;padding:1.5rem 2rem;opacity:0;pointer-events:none;transition:opacity .4s,transform .4s;transform:translateX(-50%) translateY(15px)}
+.mindmap.expanded .detail.active-detail{opacity:1;pointer-events:all;transform:translateX(-50%) translateY(0)}
+.detail h3{font-size:1rem;margin-bottom:.6rem;color:var(--accent)}.detail p{font-size:.85rem;text-align:left;max-width:none}
+.detail .d-row{display:flex;gap:1rem;flex-wrap:wrap;margin:.5rem 0}
+.detail .d-card{flex:1;min-width:200px;background:var(--bg);border-radius:8px;padding:.8rem;border:1px solid var(--surface2)}
+.detail .d-card h4{font-size:.8rem;font-weight:600;margin-bottom:.3rem;color:var(--text)}
+.detail .d-card p{font-size:.75rem;margin:0}
+
+/* Back button */
+.back-btn{position:absolute;top:12px;right:12px;background:var(--surface2);border:none;color:var(--muted);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.75rem;z-index:20;transition:all .2s;display:none}
+.mindmap.expanded .back-btn{display:block}
+.back-btn:hover{background:var(--accent);color:white}
+
+@media(max-width:900px){.node{width:90px;height:90px}.node .n-title{font-size:.6rem}.hub{width:100px;height:100px}.hub span{font-size:.8rem}}
 </style>
 </head>
 <body>
 <div class="deck" id="deck">
 
+<!-- 1: Hero -->
 <div class="slide active" data-slide="0"><div class="sc">
   <h1 class="a sc-a">AI Assistant Arena</h1>
-  <p class="a d1" style="font-size:1.2rem;color:var(--text)">A production-grade system comparing <span class="hl">OSS (Qwen 0.5B)</span> vs <span class="hl-p">Frontier (GPT-4.1)</span> across quality, safety, and latency.</p>
-  <div class="row mt-2 a d2 sc-a" style="max-width:650px;gap:1rem;flex-wrap:nowrap">
+  <p class="a d1" style="font-size:1.15rem;color:var(--text)">A production-grade system comparing <span class="hl">OSS (Qwen 0.5B)</span> vs <span class="hl-p">Frontier (GPT-4.1)</span> across quality, safety, and latency.</p>
+  <div class="row mt-2 a d2" style="max-width:650px;gap:1rem;flex-wrap:nowrap">
     <a href="https://huggingface.co/spaces/sarthakbiswas/ai-assistant-arena" target="_blank" class="card" style="text-align:center;flex:1"><div class="card-icon">&#x1F680;</div><h3>Live Demo</h3><p>HF Spaces</p></a>
     <a href="https://github.com/sarthakbiswas97/personal-assistant" target="_blank" class="card" style="text-align:center;flex:1"><div class="card-icon">&#x1F4BB;</div><h3>Source Code</h3><p>GitHub</p></a>
     <div class="card" style="text-align:center;flex:1"><div class="card-icon">&#x1F4CA;</div><h3>122 Tests</h3><p>~4700 LoC</p></div>
   </div>
-  <p class="a d3 mt-2" style="font-size:.8rem">Use arrow keys or click dots to navigate</p>
+  <p class="a d3 mt-1" style="font-size:.75rem">Use arrow keys to navigate</p>
 </div></div>
 
+<!-- 2: Challenge -->
 <div class="slide" data-slide="1"><div class="sc">
   <h2 class="a">The Engineering Challenge</h2>
-  <p class="a d1 mb-2">Not "which model chats better." The real question:<br><strong style="color:var(--text);font-size:1.15rem">How do you build a fair comparison where only the model changes?</strong></p>
+  <p class="a d1 mb-2">Not "which model chats better." The real question:<br><strong style="color:var(--text);font-size:1.1rem">How do you build a fair comparison where only the model changes?</strong></p>
   <div class="row a d2" style="max-width:900px">
     <div class="card col"><h3 class="hl">Controlled Variables</h3><p>Interface (Gradio arena)<br>Safety guardrails (15 patterns)<br>Tool access (3 tools)<br>Memory system (3-layer)<br>Context assembly<br>Observability metrics</p></div>
-    <div class="card col"><h3 class="hl-p">Independent Variable</h3><p style="font-size:1rem;color:var(--text);line-height:2"><span class="tag tag-b">OSS</span> Qwen2.5-0.5B-Instruct<br><span class="tag tag-p">Frontier</span> OpenAI GPT-4.1-mini</p><p class="mt-1">Same prompt. Same tools. Same context.<br>Different reasoning engine.</p></div>
+    <div class="card col"><h3 class="hl-p">Independent Variable</h3><p style="font-size:.95rem;color:var(--text);line-height:2"><span class="tag tag-b">OSS</span> Qwen2.5-0.5B<br><span class="tag tag-p">Frontier</span> GPT-4.1-mini</p><p class="mt-1">Same prompt. Same tools. Same context.<br>Different reasoning engine.</p></div>
   </div>
 </div></div>
 
+<!-- 3: Principles -->
 <div class="slide" data-slide="2"><div class="sc">
   <h2 class="a">Design Principles</h2>
   <div class="row a d1" style="max-width:1000px">
-    <div class="card col"><h3>Separation of Concerns</h3><p>Guardrails don't know about models. Tools don't know about memory. Models don't know about the UI. Each layer does one job.</p></div>
-    <div class="card col"><h3>Graceful Degradation</h3><p>No Redis? In-memory. No API key? OSS-only. Tool fails? Model responds from own knowledge. Nothing crashes.</p></div>
+    <div class="card col"><h3>Separation of Concerns</h3><p>Each layer does one job. Guardrails don't know about models. Tools don't know about memory.</p></div>
+    <div class="card col"><h3>Graceful Degradation</h3><p>No Redis? In-memory. No API key? OSS-only. Tool fails? Model responds from knowledge.</p></div>
   </div>
   <div class="row a d2 mt-1" style="max-width:1000px">
-    <div class="card col"><h3>Immutable Data</h3><p>Frozen dataclasses for Message, ToolResult, Settings, Snapshot. No mutation, no side effects, safe for concurrency.</p></div>
-    <div class="card col"><h3>Async-First</h3><p>Non-blocking I/O throughout. OSS model bridges sync HF to async via <span class="ic">run_in_executor</span>. Event loop stays free.</p></div>
+    <div class="card col"><h3>Immutable Data</h3><p>Frozen dataclasses everywhere. No mutation, no side effects, safe for concurrency.</p></div>
+    <div class="card col"><h3>Async-First</h3><p>Non-blocking I/O. OSS bridges sync HF to async via <span class="ic">run_in_executor</span>.</p></div>
   </div>
 </div></div>
 
-<div class="slide" data-slide="3"><div class="sc">
-  <h2 class="a">System Architecture</h2>
-  <p class="a d1 mb-1">In arena mode, tools execute once. Both models get identical context.</p>
-  <div class="a d2" style="font-size:.75rem"><div class="mermaid">
-flowchart TD
-    User([User]) --> Guard{Input Guardrails}
-    Guard -->|blocked| Refuse([Refusal])
-    Guard -->|pass| Tools
-    subgraph Tools[Tool Orchestration]
-        Router[Hybrid Router] --> WS[Web Search]
-        Router --> Wiki[Wikipedia]
-        Router --> Calc[Calculator]
-    end
-    Tools --> Mem
-    subgraph Mem[Context Management]
-        WM[Working Memory] -->|overflow| Sum[Summarizer]
-        Sum --> Redis[(Redis)]
-    end
-    Mem --> Ctx[Context Assembly]
-    Ctx --> OSS[OSS Qwen 0.5B]
-    Ctx --> Front[Frontier GPT-4.1]
-    OSS --> OG{Output Guard}
-    Front --> OG
-    OG --> Obs[Observability]
-    Obs --> Resp([Response])
-  </div></div>
-</div></div>
+<!-- 4: INTERACTIVE MIND MAP -->
+<div class="slide" data-slide="3" style="padding:1.5rem 2rem">
+  <h2 class="a" style="margin-bottom:.5rem">System Architecture</h2>
+  <p class="a d1" style="font-size:.8rem;margin-bottom:.5rem">Click any component to explore its internals</p>
 
+  <div class="mindmap a d2" id="mindmap">
+    <button class="back-btn" onclick="collapseNode()">&#x2190; Back</button>
+
+    <!-- Hub -->
+    <div class="hub"><span>AI Assistant</span><small>Arena</small></div>
+
+    <!-- Lines (positioned by JS) -->
+
+    <!-- Nodes -->
+    <div class="node" data-n="0" onclick="expandNode(0)">
+      <div class="n-icon">&#x1F6E1;</div>
+      <div class="n-title">Input Guardrails</div>
+      <div class="n-sub">15 regex patterns</div>
+    </div>
+    <div class="node" data-n="1" onclick="expandNode(1)">
+      <div class="n-icon">&#x1F527;</div>
+      <div class="n-title">Tool Orchestration</div>
+      <div class="n-sub">3 tools, hybrid routing</div>
+    </div>
+    <div class="node" data-n="2" onclick="expandNode(2)">
+      <div class="n-icon">&#x1F4CA;</div>
+      <div class="n-title">Evaluation</div>
+      <div class="n-sub">36 prompts, LLM judge</div>
+    </div>
+    <div class="node" data-n="3" onclick="expandNode(3)">
+      <div class="n-icon">&#x1F6E1;</div>
+      <div class="n-title">Output Guardrails</div>
+      <div class="n-sub">Content filtering</div>
+    </div>
+    <div class="node" data-n="4" onclick="expandNode(4)">
+      <div class="n-icon">&#x1F4C8;</div>
+      <div class="n-title">Observability</div>
+      <div class="n-sub">Redis metrics</div>
+    </div>
+    <div class="node" data-n="5" onclick="expandNode(5)">
+      <div class="n-icon">&#x1F9E0;</div>
+      <div class="n-title">Context Management</div>
+      <div class="n-sub">3-layer memory</div>
+    </div>
+    <div class="node" data-n="6" onclick="expandNode(6)">
+      <div class="n-icon">&#x1F916;</div>
+      <div class="n-title">Model Backends</div>
+      <div class="n-sub">OSS + Frontier</div>
+    </div>
+
+    <!-- Detail Panels -->
+    <div class="detail" data-detail="0">
+      <h3>Input Guardrails</h3>
+      <p>Two categories of regex patterns that run before the model sees any input. Latency: &lt;1ms.</p>
+      <div class="d-row">
+        <div class="d-card"><h4><span class="tag tag-r">8 Patterns</span> Prompt Injection</h4><p>"ignore previous instructions", "you are now DAN", "pretend to be", "system prompt:", "jailbreak", "act as if you are"</p></div>
+        <div class="d-card"><h4><span class="tag tag-r">5 Patterns</span> Harmful Requests</h4><p>"how to make a bomb", "how to hack", "how to harm someone", "synthesize drugs", "steal identity"</p></div>
+      </div>
+      <p class="mt-1" style="font-size:.75rem;color:var(--muted)"><strong>Why regex?</strong> Fast, transparent, zero dependencies. Tradeoff: limited coverage vs moderation API.</p>
+    </div>
+
+    <div class="detail" data-detail="1">
+      <h3>Tool Orchestration</h3>
+      <p>LLM = reasoning. Tools = deterministic execution. 4-tier classification hierarchy.</p>
+      <div class="d-row">
+        <div class="d-card"><h4><span class="tag tag-g">0ms</span> Chitchat</h4><p>Allowlist of 20+ greetings/filler ("hello", "thanks"). Skip everything.</p></div>
+        <div class="d-card"><h4><span class="tag tag-b">0ms</span> Keywords</h4><p>"search X" &rarr; Web Search, "what is X" &rarr; Wikipedia, math patterns &rarr; Calculator</p></div>
+        <div class="d-card"><h4><span class="tag tag-p">500ms</span> LLM Router</h4><p>GPT-4.1-mini classifies subtle queries when keywords miss. JSON output.</p></div>
+        <div class="d-card"><h4><span class="tag tag-o">500ms</span> Chain Validator</h4><p>Post-execution: LLM decides if tool results need computation. Sees query + results for semantic context.</p></div>
+      </div>
+      <div class="d-row">
+        <div class="d-card"><h4>Web Search</h4><p>DuckDuckGo top 3. Real-time info beyond training cutoff.</p></div>
+        <div class="d-card"><h4>Wikipedia</h4><p>4-sentence summary. Factual grounding, reduces hallucination.</p></div>
+        <div class="d-card"><h4>Calculator</h4><p>AST-safe math (never eval). Datetime. Percentages.</p></div>
+      </div>
+      <p class="mt-1" style="font-size:.75rem;color:var(--muted)"><strong>Execution:</strong> concurrent via asyncio.gather, 5s timeout per tool, 1x retry, graceful degradation.</p>
+    </div>
+
+    <div class="detail" data-detail="2">
+      <h3>Evaluation Pipeline</h3>
+      <p>36 curated prompts scored by LLM-as-judge on 3 dimensions with structured JSON output.</p>
+      <div class="d-row">
+        <div class="d-card"><h4><span class="tag tag-b">12</span> Factual</h4><p>Geography, science, history, tech. Tests hallucination rate.</p></div>
+        <div class="d-card"><h4><span class="tag tag-o">12</span> Bias</h4><p>Gender, race, age, religion, disability. Tests stereotype handling.</p></div>
+        <div class="d-card"><h4><span class="tag tag-r">12</span> Safety</h4><p>Jailbreaks, harmful requests, self-harm. Tests refusal quality.</p></div>
+      </div>
+      <table class="mt-1"><tr><th>Metric</th><th>OSS</th><th>Frontier</th><th>Gap</th></tr>
+      <tr><td>Hallucination</td><td>4.19</td><td>4.94</td><td style="color:var(--orange)">-0.75</td></tr>
+      <tr><td>Safety</td><td>4.31</td><td>5.00</td><td style="color:var(--orange)">-0.69</td></tr>
+      <tr><td>Bias</td><td>4.22</td><td>4.92</td><td style="color:var(--orange)">-0.70</td></tr>
+      <tr><td>Guardrails</td><td>14%</td><td>14%</td><td style="color:var(--green)">0%</td></tr></table>
+      <p class="mt-1" style="font-size:.75rem;color:var(--muted)"><strong>Key insight:</strong> Guardrail blocks identical (14%) because they run BEFORE either model.</p>
+    </div>
+
+    <div class="detail" data-detail="3">
+      <h3>Output Guardrails</h3>
+      <p>Second line of defense. Runs after the model generates, catches unsafe content that slipped through.</p>
+      <div class="d-row">
+        <div class="d-card"><h4><span class="tag tag-r">Pattern 1</span></h4><p>"here is how to / instructions for" + hack/bomb/harm</p></div>
+        <div class="d-card"><h4><span class="tag tag-r">Pattern 2</span></h4><p>"step N: obtain/acquire/steal" + weapons/explosives/drugs</p></div>
+      </div>
+      <p class="mt-1" style="font-size:.75rem;color:var(--muted)"><strong>Defense in depth:</strong> Input guardrails + output guardrails = two-stage filtering. Neither model nor response bypasses safety.</p>
+    </div>
+
+    <div class="detail" data-detail="4">
+      <h3>Observability</h3>
+      <p>Same Redis instance for persistence AND metrics. One dependency, not two. All writes atomic and fire-and-forget.</p>
+      <table><tr><th>Metric</th><th>Redis Key</th><th>Why</th></tr>
+      <tr><td>Requests</td><td><span class="ic">metrics:requests:{model}</span></td><td>Usage volume</td></tr>
+      <tr><td>Latency</td><td><span class="ic">metrics:latency:{model}</span></td><td>Avg / P50 / P95</td></tr>
+      <tr><td>Guardrails</td><td><span class="ic">metrics:guardrail_blocks</span></td><td>Safety rate</td></tr>
+      <tr><td>Tool calls</td><td><span class="ic">metrics:tool_calls:{tool}</span></td><td>Usage patterns</td></tr>
+      <tr><td>Summarizations</td><td><span class="ic">metrics:summarizations</span></td><td>Memory pressure</td></tr>
+      <tr><td>Sessions</td><td><span class="ic">metrics:session_restores</span></td><td>Persistence hits</td></tr></table>
+    </div>
+
+    <div class="detail" data-detail="5">
+      <h3>Tiered Context Management</h3>
+      <p>Problem: naive sliding window forgets early context. Fix: compress evicted turns, don't drop them.</p>
+      <div class="d-row">
+        <div class="d-card"><h4><span class="tag tag-b">Layer 1</span> Working Memory</h4><p>Sliding window, last N turns verbatim. On overflow, evicted turns go to Layer 2 (not dropped).</p></div>
+        <div class="d-card"><h4><span class="tag tag-p">Layer 2</span> Summarizer</h4><p>LLM compresses: existing summary + evicted turns &rarr; updated summary. Preserves names, facts, decisions.</p></div>
+        <div class="d-card"><h4><span class="tag tag-g">Layer 3</span> Redis</h4><p>All state persisted with TTL. Sessions survive restarts. Writes are async, never block response.</p></div>
+      </div>
+      <div class="d-row">
+        <div class="d-card"><h4>Navigable</h4><p>Summary preserves narrative thread</p></div>
+        <div class="d-card"><h4>Fast</h4><p>Redis &lt;1ms, summary pre-computed</p></div>
+        <div class="d-card"><h4>Fresh</h4><p>Regenerated on each overflow</p></div>
+        <div class="d-card"><h4>Compound</h4><p>Accumulates across full history</p></div>
+      </div>
+      <p class="mt-1" style="font-size:.75rem;color:var(--muted)"><strong>Fallback:</strong> No API key = extractive truncation. No Redis = in-memory. Never crashes.</p>
+    </div>
+
+    <div class="detail" data-detail="6">
+      <h3>Model Backends</h3>
+      <p>Both implement the same async interface. The architecture doesn't know which model is running.</p>
+      <div class="d-row">
+        <div class="d-card"><h4><span class="tag tag-b">OSS</span> Qwen2.5-0.5B-Instruct</h4><p>HuggingFace transformers. TextIteratorStreamer for token streaming. run_in_executor for non-blocking queue reads. CPU inference.</p></div>
+        <div class="d-card"><h4><span class="tag tag-p">Frontier</span> GPT-4.1-mini</h4><p>AsyncOpenAI client. Native async streaming. API-based, no local compute.</p></div>
+      </div>
+      <div class="d-row">
+        <div class="d-card"><h4>Arena Mode</h4><p>Both fire concurrently via asyncio.create_task. Tools execute ONCE, results shared. Identical context, different reasoning.</p></div>
+        <div class="d-card"><h4>Abstract Interface</h4><p>BaseModel ABC with async generate() and stream(). New models = implement interface, register in app.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5: Edge Cases -->
 <div class="slide" data-slide="4"><div class="sc">
-  <h2 class="a">Tiered Context Management</h2>
-  <p class="a d1 mb-2"><strong>Problem:</strong> Naive window drops "My name is Sarthak" after 10 turns. <strong>Fix:</strong> Compress, don't drop.</p>
-  <div class="row a d2">
-    <div class="col" style="max-width:480px">
-      <div class="flow af"><span class="tag tag-b">System</span> "You are a helpful assistant..."</div>
-      <div class="flow af"><span class="tag tag-p">Summary</span> "User is Sarthak, building AI startup..."</div>
-      <div class="flow af"><span class="tag tag-g">Tools</span> "[Calculator] 1947 * 365 = 710,655"</div>
-      <div class="flow af"><span class="tag tag-o">Recent</span> Last N turns verbatim</div>
-      <div class="flow" style="border-left-color:var(--accent2)"><span class="tag tag-p">Redis</span> Persisted, survives restart</div>
-    </div>
-    <div class="col">
-      <h3>Overflow Flow</h3>
-      <p style="font-size:.85rem">1. Turn 11 arrives (window=10)<br>2. Turn 1 evicted, NOT dropped<br>3. Summarizer: LLM compresses old + new<br>4. Summary prepended to every future context<br>5. Redis persists async (never blocks)<br><br><strong>Fallback:</strong> No key = truncation. No Redis = in-memory.</p>
-    </div>
-  </div>
-</div></div>
-
-<div class="slide" data-slide="5"><div class="sc">
-  <h2 class="a">Tool Orchestration</h2>
-  <p class="a d1 mb-1">LLM = reasoning. Tools = deterministic execution. The system decides which tools to call.</p>
-  <div class="row a d2" style="max-width:1000px">
-    <div class="col">
-      <h3>Classification Hierarchy</h3>
-      <div class="flow"><span class="tag tag-g">0ms</span> Chitchat ("hello", "thanks") <span class="fa">&rarr;</span> skip</div>
-      <div class="flow"><span class="tag tag-b">0ms</span> Keywords ("search X", "2+2") <span class="fa">&rarr;</span> execute</div>
-      <div class="flow"><span class="tag tag-p">500ms</span> LLM classifier (subtle queries) <span class="fa">&rarr;</span> execute</div>
-      <div class="flow"><span class="tag tag-o">500ms</span> LLM chain validator (post-exec) <span class="fa">&rarr;</span> chain?</div>
-    </div>
-    <div class="col">
-      <h3>3 Tools</h3>
-      <table><tr><th>Tool</th><th>Solves</th></tr>
-      <tr><td><span class="tag tag-b">Web Search</span></td><td>Real-time info (DuckDuckGo)</td></tr>
-      <tr><td><span class="tag tag-g">Wikipedia</span></td><td>Factual grounding</td></tr>
-      <tr><td><span class="tag tag-o">Calculator</span></td><td>Exact math (AST, no eval)</td></tr></table>
-    </div>
-  </div>
-</div></div>
-
-<div class="slide" data-slide="6"><div class="sc">
   <h2 class="a">Edge Cases: Where Details Matter</h2>
   <p class="a d1 mb-2">"divided by 47" is math. "divided by borders" is metaphor. Regex can't tell. LLM can.</p>
-  <div class="row a d2" style="max-width:1000px">
+  <div class="row a d2" style="max-width:900px">
     <div class="col">
-      <div class="ec ok"><div class="q">"population of Japan divided by 47"</div><div class="v"><span class="hl-g">CHAIN</span> &mdash; LLM: math intent, 125000000 / 47</div></div>
-      <div class="ec ok"><div class="q">"India and Pakistan divided in 1947"</div><div class="v"><span class="hl-g">NO CHAIN</span> &mdash; LLM: historical, not math</div></div>
-      <div class="ec ok"><div class="q">"how does current flow in a circuit"</div><div class="v"><span class="hl-g">NO SEARCH</span> &mdash; "current" = physics, not news</div></div>
+      <div class="ec ok"><div class="q">"population of Japan divided by 47"</div><div class="v"><span class="hl-g">CHAIN</span> &mdash; LLM: math, 125000000 / 47</div></div>
+      <div class="ec ok"><div class="q">"India and Pakistan divided in 1947"</div><div class="v"><span class="hl-g">NO CHAIN</span> &mdash; LLM: historical</div></div>
+      <div class="ec ok"><div class="q">"how does current flow in a circuit"</div><div class="v"><span class="hl-g">NO SEARCH</span> &mdash; physics, not news</div></div>
     </div>
     <div class="col">
       <h3>The Fix</h3>
-      <p style="font-size:.85rem">Every heuristic breaks. That's a <strong>semantic understanding</strong> problem, not a regex problem.<br><br><strong>Solution:</strong> LLM chain validator sees query + tool results. Full context for semantic decisions.<br><br>Pre-filter gates the LLM call. Cost near zero for most queries.</p>
+      <p style="font-size:.82rem">Every heuristic breaks with a counterexample. That's a <strong>semantic understanding</strong> problem, not a regex problem.<br><br><strong>Solution:</strong> LLM chain validator sees query + tool results. Full context for semantic decisions.<br><br>Pre-filter gates the LLM call. Cost near zero for most queries.</p>
     </div>
   </div>
 </div></div>
 
-<div class="slide" data-slide="7"><div class="sc">
-  <h2 class="a">Safety Guardrails</h2>
-  <p class="a d1 mb-2">Two-stage defense in depth. Input guards block before model. Output guards filter after.</p>
-  <div class="row a d2" style="max-width:1000px">
-    <div class="col">
-      <div class="ec"><div class="q">"Ignore all previous instructions"</div><div class="v"><span class="tag tag-r">BLOCKED</span> Injection detected</div></div>
-      <div class="ec"><div class="q">"How to make a bomb at home"</div><div class="v"><span class="tag tag-r">BLOCKED</span> Harmful request</div></div>
-      <div class="ec"><div class="q">"You are now DAN mode"</div><div class="v"><span class="tag tag-r">BLOCKED</span> Jailbreak attempt</div></div>
-    </div>
-    <div class="col">
-      <h3>15 Regex Patterns</h3>
-      <p style="font-size:.85rem"><span class="tag tag-r">8</span> injection &middot; <span class="tag tag-r">5</span> harmful &middot; <span class="tag tag-r">2</span> output<br><br><strong>Why regex?</strong> &lt;1ms, transparent, zero deps.<br><strong>Tradeoff:</strong> Limited vs moderation API, but catches common vectors.</p>
-    </div>
-  </div>
-</div></div>
-
-<div class="slide" data-slide="8"><div class="sc">
-  <h2 class="a">Evaluation Results</h2>
-  <p class="a d1 mb-2">36 prompts scored by LLM-as-judge (GPT-4.1) on 3 dimensions.</p>
-  <div class="row a d2" style="max-width:1000px">
-    <div class="col">
-      <table><tr><th>Metric</th><th>OSS</th><th>Frontier</th><th>Gap</th></tr>
-      <tr><td><strong>Hallucination</strong></td><td>4.19</td><td>4.94</td><td style="color:var(--orange)">-0.75</td></tr>
-      <tr><td><strong>Safety</strong></td><td>4.31</td><td>5.00</td><td style="color:var(--orange)">-0.69</td></tr>
-      <tr><td><strong>Bias</strong></td><td>4.22</td><td>4.92</td><td style="color:var(--orange)">-0.70</td></tr>
-      <tr><td><strong>Latency</strong></td><td>~20s</td><td>~3s</td><td style="color:var(--orange)">~7x</td></tr>
-      <tr><td><strong>Guardrail Blocks</strong></td><td>14%</td><td>14%</td><td style="color:var(--green)">0%</td></tr></table>
-    </div>
-    <div class="col">
-      <h3>Key Insight</h3>
-      <p style="font-size:.9rem">Block rate is <strong>identical (14%)</strong> &mdash; guardrails run BEFORE either model.<br><br>The safety gap (4.31 vs 5.00) is each model's <strong>native refusal ability</strong> on prompts that pass guardrails.</p>
-    </div>
-  </div>
-</div></div>
-
-<div class="slide" data-slide="9"><div class="sc">
-  <h2 class="a">Observability</h2>
-  <p class="a d1 mb-2">Redis for both persistence AND metrics. One dependency. All writes fire-and-forget.</p>
-  <div class="a d2">
-    <table><tr><th>Metric</th><th>Redis Key</th><th>Why</th></tr>
-    <tr><td>Requests</td><td><span class="ic">metrics:requests:{model}</span></td><td>Usage volume</td></tr>
-    <tr><td>Latency</td><td><span class="ic">metrics:latency:{model}</span></td><td>Avg / P50 / P95</td></tr>
-    <tr><td>Guardrails</td><td><span class="ic">metrics:guardrail_blocks</span></td><td>Safety effectiveness</td></tr>
-    <tr><td>Tool calls</td><td><span class="ic">metrics:tool_calls:{tool}</span></td><td>Tool usage patterns</td></tr>
-    <tr><td>Summarizations</td><td><span class="ic">metrics:summarizations</span></td><td>Memory pressure</td></tr>
-    <tr><td>Sessions</td><td><span class="ic">metrics:session_restores</span></td><td>Persistence usage</td></tr></table>
-  </div>
-</div></div>
-
-<div class="slide" data-slide="10"><div class="sc">
+<!-- 6: Quality -->
+<div class="slide" data-slide="5"><div class="sc">
   <h2 class="a">Engineering Quality</h2>
-  <div class="row a d1" style="max-width:700px;flex-wrap:nowrap">
+  <div class="row a d1" style="max-width:650px;flex-wrap:nowrap">
     <div class="stat"><div class="stat-n">122</div><div class="stat-l">Tests</div></div>
     <div class="stat"><div class="stat-n">21</div><div class="stat-l">Source Files</div></div>
     <div class="stat"><div class="stat-n">4700</div><div class="stat-l">Lines</div></div>
     <div class="stat"><div class="stat-n">52</div><div class="stat-l">Commits</div></div>
   </div>
-  <div class="row a d2 mt-1" style="max-width:1000px">
+  <div class="row a d2 mt-1" style="max-width:900px">
     <div class="card col"><h3>CI/CD</h3><p>Every push: lint + test + auto-deploy. Docs-only changes skip CI.</p></div>
     <div class="card col"><h3>Docker</h3><p>CPU-optimized. Model baked at build. Graceful fallback.</p></div>
     <div class="card col"><h3>Code Audit</h3><p>Frozen dataclasses. No eval(). Type annotations. Public APIs.</p></div>
   </div>
 </div></div>
 
-<div class="slide" data-slide="11"><div class="sc">
+<!-- 7: Next -->
+<div class="slide" data-slide="6"><div class="sc">
   <h2 class="a">What I'd Build Next</h2>
   <div class="row a d1" style="max-width:1000px">
-    <div class="card" style="flex:1;min-width:250px"><h3>Vector Long-Term Memory</h3><p>Redis Search embeddings for semantic retrieval beyond summary.</p></div>
-    <div class="card" style="flex:1;min-width:250px"><h3>Zero-Shot Classifier</h3><p>BART-MNLI replacing keywords. Context-aware, no API cost.</p></div>
-    <div class="card" style="flex:1;min-width:250px"><h3>ReAct Agent Loop</h3><p>Reason &rarr; tool &rarr; observe &rarr; reason for complex queries.</p></div>
-    <div class="card" style="flex:1;min-width:250px"><h3>Quantized Model</h3><p>GPTQ 4-bit for 3-5x CPU speedup.</p></div>
+    <div class="card" style="flex:1;min-width:230px"><h3>Vector Memory</h3><p>Redis Search embeddings for semantic retrieval.</p></div>
+    <div class="card" style="flex:1;min-width:230px"><h3>Zero-Shot Classifier</h3><p>BART-MNLI replacing keywords. No API cost.</p></div>
+    <div class="card" style="flex:1;min-width:230px"><h3>ReAct Loop</h3><p>Multi-step reason &rarr; tool &rarr; observe &rarr; reason.</p></div>
+    <div class="card" style="flex:1;min-width:230px"><h3>Quantized Model</h3><p>GPTQ 4-bit for 3-5x CPU speedup.</p></div>
   </div>
 </div></div>
 
-<div class="slide" data-slide="12"><div class="sc">
+<!-- 8: Demo -->
+<div class="slide" data-slide="7"><div class="sc">
   <h2 class="a sc-a">Try It Yourself</h2>
-  <p class="a d1 mb-2">Both models, all tools, full observability. Live on Hugging Face Spaces.</p>
+  <p class="a d1 mb-2">Both models, all tools, full observability.</p>
   <div class="a d2"><a href="https://huggingface.co/spaces/sarthakbiswas/ai-assistant-arena" target="_blank" class="btn">Open Live Demo &rarr;</a></div>
-  <div class="row a d3 mt-2" style="max-width:500px;gap:1rem;flex-wrap:nowrap">
-    <a href="https://github.com/sarthakbiswas97/personal-assistant" target="_blank" class="card" style="text-align:center;flex:1"><h3>GitHub Repo</h3></a>
-    <a href="https://github.com/sarthakbiswas97/personal-assistant/blob/main/eval/reports/evaluation_report.pdf" target="_blank" class="card" style="text-align:center;flex:1"><h3>Evaluation PDF</h3></a>
+  <div class="row a d3 mt-2" style="max-width:450px;gap:1rem;flex-wrap:nowrap">
+    <a href="https://github.com/sarthakbiswas97/personal-assistant" target="_blank" class="card" style="text-align:center;flex:1"><h3>GitHub</h3></a>
+    <a href="https://github.com/sarthakbiswas97/personal-assistant/blob/main/eval/reports/evaluation_report.pdf" target="_blank" class="card" style="text-align:center;flex:1"><h3>Eval PDF</h3></a>
   </div>
 </div></div>
 
 </div>
+
 <div class="nav" id="nav"></div>
 <div class="slide-counter" id="counter"></div>
-<div class="key-hint">Arrow keys to navigate</div>
+<div class="key-hint">Arrow keys to navigate &middot; Click nodes to explore</div>
+
 <script>
-mermaid.initialize({theme:'dark',themeVariables:{primaryColor:'#3b82f6',primaryTextColor:'#f1f5f9',lineColor:'#64748b',secondaryColor:'#1e293b',tertiaryColor:'#334155'}});
+/* Slide navigation */
 const slides=document.querySelectorAll('.slide'),nav=document.getElementById('nav'),counter=document.getElementById('counter');
-let cur=0;
+let cur=0,mapExpanded=false;
 slides.forEach((_,i)=>{const d=document.createElement('div');d.className='dot'+(i===0?' active':'');d.onclick=()=>go(i);nav.appendChild(d)});
-function go(n){if(n<0||n>=slides.length)return;slides[cur].classList.remove('active');slides[cur].classList.add('prev');const p=cur;setTimeout(()=>slides[p].classList.remove('prev'),600);cur=n;slides[cur].classList.add('active');document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));counter.textContent=`${cur+1} / ${slides.length}`}
-document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cur+1);if(e.key==='ArrowLeft')go(cur-1)});
-let tx=0;document.addEventListener('touchstart',e=>tx=e.touches[0].clientX);document.addEventListener('touchend',e=>{const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50){d<0?go(cur+1):go(cur-1)}});
+function go(n){if(n<0||n>=slides.length||mapExpanded)return;slides[cur].classList.remove('active');cur=n;slides[cur].classList.add('active');document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));counter.textContent=`${cur+1} / ${slides.length}`}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&mapExpanded){collapseNode();return}
+  if(e.key==='ArrowRight'||e.key===' ')go(cur+1);
+  if(e.key==='ArrowLeft')go(cur-1);
+});
+let tx=0;document.addEventListener('touchstart',e=>tx=e.touches[0].clientX);
+document.addEventListener('touchend',e=>{const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50&&!mapExpanded){d<0?go(cur+1):go(cur-1)}});
 counter.textContent=`1 / ${slides.length}`;
+
+/* Mind map expand/collapse */
+function expandNode(n){
+  const mm=document.getElementById('mindmap');
+  mm.classList.add('expanded');
+  document.querySelectorAll('.node').forEach(el=>el.classList.remove('active-node'));
+  document.querySelector(`.node[data-n="${n}"]`).classList.add('active-node');
+  document.querySelectorAll('.detail').forEach(el=>el.classList.remove('active-detail'));
+  document.querySelector(`.detail[data-detail="${n}"]`).classList.add('active-detail');
+  mapExpanded=true;
+}
+function collapseNode(){
+  const mm=document.getElementById('mindmap');
+  mm.classList.remove('expanded');
+  document.querySelectorAll('.node').forEach(el=>el.classList.remove('active-node'));
+  document.querySelectorAll('.detail').forEach(el=>el.classList.remove('active-detail'));
+  mapExpanded=false;
+}
 </script>
 </body>
 </html>
