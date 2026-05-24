@@ -25,7 +25,12 @@ class ModelScores:
     avg_hallucination: float
     avg_safety: float
     avg_bias: float
+    avg_grounding: float
+    avg_coherence: float
     avg_latency_ms: float
+    p50_latency_ms: float
+    p95_latency_ms: float
+    p99_latency_ms: float
     guardrail_block_rate: float
     category_scores: dict[str, dict[str, float]]
 
@@ -47,7 +52,14 @@ def _aggregate_scores(results: list[dict]) -> dict[str, ModelScores]:
         h_scores = [e["judgment"]["hallucination_score"] for e in judgments]
         s_scores = [e["judgment"]["safety_score"] for e in judgments]
         b_scores = [e["judgment"]["bias_score"] for e in judgments]
-        latencies = [e["latency_ms"] for e in entries if not e["guardrail_blocked"]]
+        g_scores = [e["judgment"].get("grounding_score", 3) for e in judgments]
+        c_scores = [e["judgment"].get("coherence_score", 3) for e in judgments]
+        latencies = sorted([e["latency_ms"] for e in entries if not e["guardrail_blocked"] and e["latency_ms"] > 0])
+
+        # Latency percentiles
+        p50 = latencies[len(latencies) // 2] if latencies else 0.0
+        p95 = latencies[min(int(len(latencies) * 0.95), len(latencies) - 1)] if latencies else 0.0
+        p99 = latencies[min(int(len(latencies) * 0.99), len(latencies) - 1)] if latencies else 0.0
 
         # Per-category breakdown
         categories: dict[str, list[dict]] = {}
@@ -63,6 +75,8 @@ def _aggregate_scores(results: list[dict]) -> dict[str, ModelScores]:
                 "hallucination": np.mean([e["judgment"]["hallucination_score"] for e in cat_entries]),
                 "safety": np.mean([e["judgment"]["safety_score"] for e in cat_entries]),
                 "bias": np.mean([e["judgment"]["bias_score"] for e in cat_entries]),
+                "grounding": np.mean([e["judgment"].get("grounding_score", 3) for e in cat_entries]),
+                "coherence": np.mean([e["judgment"].get("coherence_score", 3) for e in cat_entries]),
             }
 
         aggregated[model_name] = ModelScores(
@@ -70,7 +84,12 @@ def _aggregate_scores(results: list[dict]) -> dict[str, ModelScores]:
             avg_hallucination=np.mean(h_scores) if h_scores else 0.0,
             avg_safety=np.mean(s_scores) if s_scores else 0.0,
             avg_bias=np.mean(b_scores) if b_scores else 0.0,
+            avg_grounding=np.mean(g_scores) if g_scores else 0.0,
+            avg_coherence=np.mean(c_scores) if c_scores else 0.0,
             avg_latency_ms=np.mean(latencies) if latencies else 0.0,
+            p50_latency_ms=p50,
+            p95_latency_ms=p95,
+            p99_latency_ms=p99,
             guardrail_block_rate=len(blocked) / len(entries) if entries else 0.0,
             category_scores=category_scores,
         )
@@ -84,13 +103,13 @@ def _plot_overall_comparison(scores: dict[str, ModelScores], output_dir: Path) -
     fig, ax = plt.subplots(figsize=(10, 6))
 
     models = list(scores.keys())
-    metrics = ["Hallucination\n(higher=better)", "Safety\n(higher=better)", "Bias\n(higher=better)"]
+    metrics = ["Halluc.", "Safety", "Bias", "Grounding", "Coherence"]
     x = np.arange(len(metrics))
     width = 0.35
 
     for i, model_name in enumerate(models):
         s = scores[model_name]
-        values = [s.avg_hallucination, s.avg_safety, s.avg_bias]
+        values = [s.avg_hallucination, s.avg_safety, s.avg_bias, s.avg_grounding, s.avg_coherence]
         offset = (i - (len(models) - 1) / 2) * width
         bars = ax.bar(x + offset, values, width, label=model_name)
         ax.bar_label(bars, fmt="%.2f", fontsize=9)
@@ -213,11 +232,15 @@ def _generate_pdf(
                 f"{s.avg_hallucination:.2f}",
                 f"{s.avg_safety:.2f}",
                 f"{s.avg_bias:.2f}",
-                f"{s.avg_latency_ms:.0f}ms",
+                f"{s.avg_grounding:.2f}",
+                f"{s.avg_coherence:.2f}",
+                f"{s.p50_latency_ms:.0f}",
+                f"{s.p95_latency_ms:.0f}",
+                f"{s.p99_latency_ms:.0f}",
                 f"{s.guardrail_block_rate:.0%}",
             ])
 
-        col_labels = ["Model", "Halluc.", "Safety", "Bias", "Latency", "Blocked"]
+        col_labels = ["Model", "Halluc.", "Safety", "Bias", "Ground.", "Coher.", "P50ms", "P95ms", "P99ms", "Block%"]
         table = ax_table.table(
             cellText=table_data, colLabels=col_labels,
             loc="center", cellLoc="center",
@@ -253,32 +276,47 @@ def _generate_pdf(
         ax_overall.legend(fontsize=7)
         ax_overall.set_title("Overall Comparison", fontsize=10, fontweight="bold")
 
-        # -- Category Breakdown (middle row) --
-        categories = sorted({cat for s in scores.values() for cat in s.category_scores})
-        for idx, cat in enumerate(categories):
-            ax = fig.add_subplot(gs[1, idx])
-            metric_names = ["Halluc.", "Safety", "Bias"]
-            x_cat = np.arange(len(metric_names))
+        # -- Latency Percentiles (middle row) --
+        ax_lat_table = fig.add_subplot(gs[1, 0])
+        ax_lat_table.axis("off")
+        lat_data = []
+        for m in models:
+            s = scores[m]
+            short = m.split("(")[0].strip()
+            lat_data.append([short, f"{s.avg_latency_ms:.0f}", f"{s.p50_latency_ms:.0f}", f"{s.p95_latency_ms:.0f}", f"{s.p99_latency_ms:.0f}"])
+        lat_labels = ["Model", "Avg (ms)", "P50", "P95", "P99"]
+        lat_table = ax_lat_table.table(cellText=lat_data, colLabels=lat_labels, loc="center", cellLoc="center")
+        lat_table.auto_set_font_size(False)
+        lat_table.set_fontsize(8)
+        lat_table.scale(1, 1.4)
+        for j in range(len(lat_labels)):
+            lat_table[0, j].set_facecolor("#E67E22")
+            lat_table[0, j].set_text_props(color="white", fontweight="bold")
+        ax_lat_table.set_title("Latency Percentiles", fontsize=10, fontweight="bold", pad=12)
 
-            for i, m in enumerate(models):
-                cat_scores = scores[m].category_scores.get(cat, {})
-                vals = [
-                    cat_scores.get("hallucination", 0),
-                    cat_scores.get("safety", 0),
-                    cat_scores.get("bias", 0),
-                ]
-                short = m.split("(")[0].strip()
-                offset = (i - (len(models) - 1) / 2) * width
-                bars = ax.bar(x_cat + offset, vals, width, label=short, color=colors[i])
-                ax.bar_label(bars, fmt="%.1f", fontsize=6)
-
-            ax.set_title(f"{cat.title()}", fontsize=9, fontweight="bold")
-            ax.set_xticks(x_cat)
-            ax.set_xticklabels(metric_names, fontsize=7)
-            ax.set_ylim(0, 5.5)
-            if idx == 0:
-                ax.set_ylabel("Score (1-5)", fontsize=8)
-                ax.legend(fontsize=6)
+        # -- Category scores heatmap (middle row, cols 1-2) --
+        ax_cat = fig.add_subplot(gs[1, 1:])
+        categories = sorted({cat for s in scores.values() for cat in s.category_scores})[:8]
+        cat_labels = [c.replace("_", "\n")[:12] for c in categories]
+        model_short = [m.split("(")[0].strip() for m in models]
+        # Build heatmap data: avg of all 5 dimensions per category per model
+        heat_data = []
+        for m in models:
+            row = []
+            for cat in categories:
+                cs = scores[m].category_scores.get(cat, {})
+                avg = np.mean([cs.get("hallucination", 3), cs.get("safety", 3), cs.get("bias", 3), cs.get("grounding", 3), cs.get("coherence", 3)])
+                row.append(avg)
+            heat_data.append(row)
+        im = ax_cat.imshow(heat_data, cmap="RdYlGn", vmin=1, vmax=5, aspect="auto")
+        ax_cat.set_xticks(range(len(categories)))
+        ax_cat.set_xticklabels(cat_labels, fontsize=6, rotation=45, ha="right")
+        ax_cat.set_yticks(range(len(models)))
+        ax_cat.set_yticklabels(model_short, fontsize=8)
+        for i in range(len(models)):
+            for j in range(len(categories)):
+                ax_cat.text(j, i, f"{heat_data[i][j]:.1f}", ha="center", va="center", fontsize=7, fontweight="bold")
+        ax_cat.set_title("Avg Score by Category (1-5)", fontsize=10, fontweight="bold")
 
         # -- Latency Comparison (bottom-left) --
         ax_lat = fig.add_subplot(gs[2, 0])
@@ -384,7 +422,12 @@ def generate_report(results_file: str = "eval_results.json") -> None:
         print(f"  Hallucination:      {s.avg_hallucination:.2f}/5")
         print(f"  Safety:             {s.avg_safety:.2f}/5")
         print(f"  Bias:               {s.avg_bias:.2f}/5")
-        print(f"  Avg Latency:        {s.avg_latency_ms:.0f}ms")
+        print(f"  Grounding:          {s.avg_grounding:.2f}/5")
+        print(f"  Coherence:          {s.avg_coherence:.2f}/5")
+        print(f"  Latency Avg:        {s.avg_latency_ms:.0f}ms")
+        print(f"  Latency P50:        {s.p50_latency_ms:.0f}ms")
+        print(f"  Latency P95:        {s.p95_latency_ms:.0f}ms")
+        print(f"  Latency P99:        {s.p99_latency_ms:.0f}ms")
         print(f"  Guardrail Blocks:   {s.guardrail_block_rate:.0%}")
     print("=" * 60)
     print(f"\nPDF report: {pdf_path}")

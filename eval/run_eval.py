@@ -86,65 +86,106 @@ async def run_evaluation(
     models: dict[str, BaseModel],
     judge: LLMJudge,
 ) -> list[EvalResult]:
-    """Run full evaluation across all models and prompt categories.
+    """Run full stress test evaluation across all models.
 
-    Args:
-        models: Mapping of model name to model backend instance.
-        judge: LLM judge instance for scoring responses.
-
-    Returns:
-        List of all evaluation results with judgment scores.
+    Handles single-turn and multi-turn (context) prompts.
+    Uses the stress_test.json prompt set (50 prompts).
     """
-    prompt_files = {
-        "factual": PROMPTS_DIR / "factual.json",
-        "bias": PROMPTS_DIR / "adversarial.json",
-        "safety": PROMPTS_DIR / "safety.json",
-    }
+    stress_file = PROMPTS_DIR / "stress_test.json"
+    prompts = json.loads(stress_file.read_text())
+    logger.info("Running %d stress test prompts", len(prompts))
 
     all_results: list[EvalResult] = []
 
-    for category, filepath in prompt_files.items():
-        prompts = json.loads(filepath.read_text())
-        logger.info("Running %d %s prompts", len(prompts), category)
+    for prompt_data in prompts:
+        category = prompt_data.get("category", "unknown")
 
-        for prompt_data in prompts:
-            for model_name, model in models.items():
-                result = await _run_single_prompt(
-                    model, model_name, prompt_data, category
-                )
+        for model_name, model in models.items():
+            # Run the primary prompt
+            result = await _run_single_prompt(
+                model, model_name, prompt_data, category
+            )
 
-                # Judge non-blocked responses
-                expected = prompt_data.get(
-                    "expected_answer", prompt_data.get("expected_behavior", "")
-                )
-                judgment = await judge.judge(
-                    prompt_id=result.prompt_id,
+            # For multi-turn context prompts, run follow-up
+            if "follow_up" in prompt_data and not result.guardrail_blocked:
+                follow_up_data = {
+                    "id": prompt_data["id"].replace("a", "b"),
+                    "prompt": prompt_data["follow_up"],
+                }
+                # Build messages with context from turn 1
+                messages = [
+                    Message(role="system", content=SYSTEM_PROMPT),
+                    Message(role="user", content=prompt_data["prompt"]),
+                    Message(role="assistant", content=result.response),
+                    Message(role="user", content=prompt_data["follow_up"]),
+                ]
+                start = time.perf_counter()
+                follow_response = await model.generate(messages)
+                follow_latency = (time.perf_counter() - start) * 1000
+
+                follow_result = EvalResult(
+                    prompt_id=follow_up_data["id"],
                     model_name=model_name,
-                    category=category,
-                    prompt=result.prompt,
-                    response=result.response,
-                    expected=expected,
+                    category="context_follow_up",
+                    prompt=prompt_data["follow_up"],
+                    response=follow_response,
+                    latency_ms=follow_latency,
+                    guardrail_blocked=False,
                 )
 
-                result = EvalResult(
-                    prompt_id=result.prompt_id,
-                    model_name=result.model_name,
-                    category=result.category,
-                    prompt=result.prompt,
-                    response=result.response,
-                    latency_ms=result.latency_ms,
-                    guardrail_blocked=result.guardrail_blocked,
-                    judgment=judgment,
+                # Judge follow-up with context
+                expected_fu = prompt_data.get("follow_up_expected", "")
+                judgment_fu = await judge.judge(
+                    prompt_id=follow_up_data["id"],
+                    model_name=model_name,
+                    category="context_follow_up",
+                    prompt=prompt_data["follow_up"],
+                    response=follow_response,
+                    expected=f"Context: user said '{prompt_data['prompt']}'. Expected: {expected_fu}",
                 )
-
-                all_results.append(result)
+                follow_result = EvalResult(
+                    prompt_id=follow_result.prompt_id,
+                    model_name=follow_result.model_name,
+                    category=follow_result.category,
+                    prompt=follow_result.prompt,
+                    response=follow_result.response,
+                    latency_ms=follow_result.latency_ms,
+                    guardrail_blocked=False,
+                    judgment=judgment_fu,
+                )
+                all_results.append(follow_result)
                 logger.info(
-                    "[%s] %s | %s | latency=%.0fms",
-                    category,
-                    model_name,
-                    result.prompt_id,
-                    result.latency_ms,
+                    "[context_follow_up] %s | %s | latency=%.0fms",
+                    model_name, follow_up_data["id"], follow_latency,
                 )
+
+            # Judge primary prompt
+            expected = prompt_data.get("expected", "")
+            judgment = await judge.judge(
+                prompt_id=result.prompt_id,
+                model_name=model_name,
+                category=category,
+                prompt=result.prompt,
+                response=result.response,
+                expected=expected,
+            )
+
+            result = EvalResult(
+                prompt_id=result.prompt_id,
+                model_name=result.model_name,
+                category=result.category,
+                prompt=result.prompt,
+                response=result.response,
+                latency_ms=result.latency_ms,
+                guardrail_blocked=result.guardrail_blocked,
+                judgment=judgment,
+            )
+
+            all_results.append(result)
+            logger.info(
+                "[%s] %s | %s | latency=%.0fms",
+                category, model_name, result.prompt_id, result.latency_ms,
+            )
 
     return all_results
 
