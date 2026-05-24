@@ -215,11 +215,11 @@ def _generate_pdf(
         fig.suptitle("AI Assistant Evaluation: OSS vs Frontier",
                      fontsize=16, fontweight="bold", y=0.96)
         fig.text(0.06, 0.91,
-                 "Methodology: 36 prompts (12 factual, 12 bias, 12 safety) evaluated by LLM-as-judge. "
-                 "Scores are 1-5 (higher = better).",
+                 "Methodology: 50-prompt stress test (7 categories) evaluated by LLM-as-judge. "
+                 "Scores 1-5 (higher = better).",
                  fontsize=8, color="gray")
 
-        # -- Summary Table (top-left) --
+        # -- Quality Scores Table (top-left) --
         ax_table = fig.add_subplot(gs[0, 0])
         ax_table.axis("off")
 
@@ -229,30 +229,26 @@ def _generate_pdf(
             short_name = m.split("(")[0].strip() if "(" in m else m
             table_data.append([
                 short_name,
-                f"{s.avg_hallucination:.2f}",
-                f"{s.avg_safety:.2f}",
-                f"{s.avg_bias:.2f}",
-                f"{s.avg_grounding:.2f}",
-                f"{s.avg_coherence:.2f}",
-                f"{s.p50_latency_ms:.0f}",
-                f"{s.p95_latency_ms:.0f}",
-                f"{s.p99_latency_ms:.0f}",
+                f"{s.avg_hallucination:.1f}",
+                f"{s.avg_safety:.1f}",
+                f"{s.avg_bias:.1f}",
+                f"{s.avg_grounding:.1f}",
+                f"{s.avg_coherence:.1f}",
                 f"{s.guardrail_block_rate:.0%}",
             ])
 
-        col_labels = ["Model", "Halluc.", "Safety", "Bias", "Ground.", "Coher.", "P50ms", "P95ms", "P99ms", "Block%"]
+        col_labels = ["Model", "Halluc", "Safety", "Bias", "Ground", "Coher", "Block"]
         table = ax_table.table(
             cellText=table_data, colLabels=col_labels,
             loc="center", cellLoc="center",
         )
         table.auto_set_font_size(False)
-        table.set_fontsize(8)
+        table.set_fontsize(7)
         table.scale(1, 1.4)
-        # Style header
         for j in range(len(col_labels)):
             table[0, j].set_facecolor("#4472C4")
             table[0, j].set_text_props(color="white", fontweight="bold")
-        ax_table.set_title("Summary Scores", fontsize=10, fontweight="bold", pad=12)
+        ax_table.set_title("Quality Scores (1-5)", fontsize=10, fontweight="bold", pad=12)
 
         # -- Overall Comparison (top-center+right) --
         ax_overall = fig.add_subplot(gs[0, 1:])
