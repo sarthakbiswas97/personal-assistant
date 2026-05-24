@@ -75,13 +75,27 @@ a{color:var(--accent);text-decoration:none}
 .slide.active .a.sc-a{animation-name:fadeInScale}
 .slide.active .a.d1{animation-delay:.12s}.slide.active .a.d2{animation-delay:.25s}.slide.active .a.d3{animation-delay:.38s}.slide.active .a.d4{animation-delay:.5s}
 
-/* Arch detail */
-#arch-detail{transition:all .3s}
-.dp h3{font-size:1rem;margin-bottom:.5rem;color:var(--accent);text-align:left}
-.dp p{font-size:.82rem;text-align:left;max-width:none}
-.d-row{display:flex;gap:.7rem;flex-wrap:wrap;margin:.4rem 0}
-.d-card{flex:1;min-width:170px;background:var(--bg);border-radius:7px;padding:.6rem;border:1px solid var(--surface2);text-align:left}
-.d-card h4{font-size:.75rem;font-weight:600;margin-bottom:.2rem}.d-card p{font-size:.7rem;margin:0;max-width:none}
+/* Arch SVG node glow */
+#arch-svg g[style*="cursor:pointer"] rect,
+#arch-svg g[style*="cursor:pointer"] ellipse{transition:filter .3s,stroke-width .3s}
+#arch-svg g[style*="cursor:pointer"]:hover rect,
+#arch-svg g[style*="cursor:pointer"]:hover ellipse{filter:url(#glow);stroke-width:2.5}
+
+/* Modal overlay */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:300;opacity:0;pointer-events:none;transition:opacity .3s;display:flex;align-items:center;justify-content:center}
+.modal-backdrop.open{opacity:1;pointer-events:all}
+.modal-content{background:var(--surface);border:1px solid var(--surface2);border-radius:14px;padding:2rem 2.5rem;max-width:900px;width:90%;max-height:75vh;overflow-y:auto;transform:scale(.85);opacity:0;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .3s;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal-backdrop.open .modal-content{transform:scale(1);opacity:1}
+.modal-close{position:absolute;top:12px;right:14px;background:var(--surface2);border:none;color:var(--muted);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:.8rem;transition:all .2s}
+.modal-close:hover{background:var(--accent);color:white}
+
+/* Detail content */
+.dp h3{font-size:1.1rem;margin-bottom:.6rem;color:var(--accent);text-align:left}
+.dp p{font-size:.85rem;text-align:left;max-width:none}
+.d-row{display:flex;gap:.8rem;flex-wrap:wrap;margin:.5rem 0}
+.d-card{flex:1;min-width:180px;background:var(--bg);border-radius:8px;padding:.75rem;border:1px solid var(--surface2);text-align:left;transition:border-color .2s}
+.d-card:hover{border-color:var(--accent)}
+.d-card h4{font-size:.8rem;font-weight:600;margin-bottom:.25rem}.d-card p{font-size:.72rem;margin:0;max-width:none}
 /* Detail cards */
 .d-row{display:flex;gap:.8rem;flex-wrap:wrap;margin:.5rem 0}
 .d-card{flex:1;min-width:180px;background:var(--bg);border-radius:8px;padding:.7rem;border:1px solid var(--surface2);text-align:left}
@@ -284,9 +298,10 @@ a{color:var(--accent);text-decoration:none}
       </svg>
     </div>
 
-    <!-- Detail panel -->
-    <div id="arch-detail" style="display:none;width:100%;max-width:1050px;margin:.4rem auto 0;background:var(--surface);border:1px solid var(--surface2);border-radius:10px;padding:1rem 1.3rem;max-height:38vh;overflow-y:auto;position:relative">
-      <button onclick="closeDetail()" style="position:absolute;top:8px;right:10px;background:var(--surface2);border:none;color:var(--muted);padding:3px 10px;border-radius:5px;cursor:pointer;font-size:.7rem">Close</button>
+    <!-- Modal overlay for details -->
+    <div class="modal-backdrop" id="arch-modal" onclick="if(event.target===this)closeDetail()">
+      <div class="modal-content">
+        <button class="modal-close" onclick="closeDetail()">Esc to close</button>
 
       <!-- 0: Input Guardrails -->
       <div class="dp" data-dp="0">
@@ -387,6 +402,7 @@ a{color:var(--accent);text-decoration:none}
           <div class="d-card"><h4>Interface</h4><p>BaseModel ABC: generate() + stream(). Plug in any model.</p></div>
         </div>
       </div>
+      </div>
     </div>
   </div>
 </div>
@@ -467,20 +483,17 @@ let tx=0;document.addEventListener('touchstart',e=>tx=e.touches[0].clientX);
 document.addEventListener('touchend',e=>{const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50&&!mapExpanded){d<0?go(cur+1):go(cur-1)}});
 counter.textContent=`1 / ${slides.length}`;
 
-/* Architecture detail toggle */
+/* Architecture modal toggle */
 let activeDetail=-1;
 function toggleDetail(n){
   if(activeDetail===n){closeDetail();return}
-  const panel=document.getElementById('arch-detail');
-  const diagram=document.getElementById('arch-diagram');
+  const modal=document.getElementById('arch-modal');
   document.querySelectorAll('.dp').forEach(el=>el.style.display='none');
   const dp=document.querySelector(`.dp[data-dp="${n}"]`);
-  if(dp){dp.style.display='block';panel.style.display='block';diagram.style.maxHeight='22vh';activeDetail=n;mapExpanded=true;document.querySelectorAll('.comp-btn').forEach(b=>b.classList.remove('active'));event&&event.target&&event.target.classList.add('active')}
+  if(dp){dp.style.display='block';modal.classList.add('open');activeDetail=n;mapExpanded=true}
 }
 function closeDetail(){
-  document.getElementById('arch-detail').style.display='none';
-  document.getElementById('arch-diagram').style.maxHeight='45vh';
-  document.querySelectorAll('.comp-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('arch-modal').classList.remove('open');
   activeDetail=-1;mapExpanded=false;
 }
 </script>
