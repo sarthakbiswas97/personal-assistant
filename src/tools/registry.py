@@ -49,6 +49,11 @@ class ToolRegistry:
     def tool_names(self) -> list[str]:
         return list(self._tools.keys())
 
+    @property
+    def last_results(self) -> tuple[ToolResult, ...]:
+        """Last execution results (immutable copy for observability)."""
+        return tuple(self._last_results)
+
     async def route_and_execute(self, query: str) -> str:
         """Main entry point: route query → execute tools → format context.
 

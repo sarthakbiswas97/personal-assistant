@@ -247,8 +247,8 @@ class TestToolRegistry:
         registry.register(CalculatorTool())
 
         await registry.route_and_execute("calculate 1 + 1")
-        assert len(registry._last_results) > 0
-        assert registry._last_results[0].tool_name == "Calculator"
+        assert len(registry.last_results) > 0
+        assert registry.last_results[0].tool_name == "Calculator"
 
 
 # -- Chitchat Detection Tests --

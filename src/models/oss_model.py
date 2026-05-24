@@ -18,6 +18,10 @@ from src.models.base import BaseModel, Message
 
 logger = logging.getLogger(__name__)
 
+_MAX_NEW_TOKENS = 512
+_TEMPERATURE = 0.7
+_TOP_P = 0.9
+
 
 class OSSModel(BaseModel):
     """Qwen2.5-0.5B-Instruct backend via Hugging Face transformers.
@@ -57,11 +61,11 @@ class OSSModel(BaseModel):
 
         generation_kwargs = {
             "input_ids": input_ids,
-            "max_new_tokens": 512,
+            "max_new_tokens": _MAX_NEW_TOKENS,
             "streamer": streamer,
             "do_sample": True,
-            "temperature": 0.7,
-            "top_p": 0.9,
+            "temperature": _TEMPERATURE,
+            "top_p": _TOP_P,
         }
 
         thread = Thread(target=self._run_generation, args=(generation_kwargs,))

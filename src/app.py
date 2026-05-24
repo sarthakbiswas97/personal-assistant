@@ -231,7 +231,7 @@ async def arena_respond(
 
     # Log tool calls to observability
     if tool_context:
-        for result in _get_registry()._last_results:
+        for result in _get_registry().last_results:
             asyncio.create_task(
                 _get_metrics().record_tool_call(result.tool_name, result.success)
             )
@@ -300,7 +300,7 @@ async def respond(
 
     # Tool execution
     tool_context = await _get_registry().route_and_execute(message)
-    for result in _get_registry()._last_results:
+    for result in _get_registry().last_results:
         asyncio.create_task(
             _get_metrics().record_tool_call(result.tool_name, result.success)
         )
