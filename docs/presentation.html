@@ -126,7 +126,7 @@ a{color:var(--accent);text-decoration:none}
   <!-- Architecture SVG embedded in hero -->
   <div class="a d1" style="width:100%;flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;margin-top:.5rem">
     <div id="arch-diagram" style="overflow-x:auto;flex:1;border-radius:10px;background:#0d0d0f;border:1px solid var(--surface2)">
-      <svg id="arch-svg" viewBox="-10 -5 1120 310" style="width:100%;height:auto;min-height:280px;min-width:900px;display:block">
+      <svg id="arch-svg" viewBox="-10 -5 1260 280" style="width:100%;height:auto;min-height:260px;min-width:1000px;display:block">
         <defs>
           <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r=".6" fill="#222226"/></pattern>
           <filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
@@ -143,13 +143,13 @@ a{color:var(--accent);text-decoration:none}
             <animateTransform attributeName="gradientTransform" type="translate" from="-1 0" to="1 0" dur="2.5s" repeatCount="indefinite"/>
           </linearGradient>
         </defs>
-        <rect x="-10" y="-5" width="1120" height="310" fill="url(#dots)"/>
+        <rect x="-10" y="-5" width="1260" height="280" fill="url(#dots)"/>
         <path d="M 70 150 L 150 150" fill="none" stroke="#ef4444" stroke-width="2" opacity=".25"/>
         <circle r="3" fill="#ef4444" opacity=".8"><animateMotion dur="2s" repeatCount="indefinite" path="M 70 150 L 150 150"/><animate attributeName="opacity" values="0;.9;0" dur="2s" repeatCount="indefinite"/></circle>
         <path d="M 270 150 C 300 150, 310 110, 340 110" fill="none" stroke="#3b82f6" stroke-width="2" opacity=".25"/>
         <circle r="3" fill="#3b82f6" opacity=".8"><animateMotion dur="2s" repeatCount="indefinite" path="M 270 150 C 300 150, 310 110, 340 110"/><animate attributeName="opacity" values="0;.9;0" dur="2s" repeatCount="indefinite"/></circle>
-        <path d="M 210 180 L 210 240" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4 3" opacity=".3"/>
-        <text x="210" y="262" text-anchor="middle" fill="#ef4444" font-size="9" opacity=".5" font-family="system-ui">Refused</text>
+        <path d="M 210 172 L 210 210" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4 3" opacity=".3"/>
+        <text x="210" y="225" text-anchor="middle" fill="#ef4444" font-size="8" opacity=".5" font-family="system-ui">rejected</text>
         <path d="M 520 110 C 550 110, 560 110, 590 110" fill="none" stroke="#8b5cf6" stroke-width="2" opacity=".25"/>
         <circle r="3" fill="#8b5cf6" opacity=".8"><animateMotion dur="1.8s" repeatCount="indefinite" path="M 520 110 C 550 110, 560 110, 590 110"/><animate attributeName="opacity" values="0;.9;0" dur="1.8s" repeatCount="indefinite"/></circle>
         <path d="M 760 110 L 810 150" fill="none" stroke="#22c55e" stroke-width="2" opacity=".25"/>
@@ -161,7 +161,6 @@ a{color:var(--accent);text-decoration:none}
         <path d="M 1000 100 L 1030 140" fill="none" stroke="#f97316" stroke-width="2" opacity=".25"/>
         <path d="M 1000 200 L 1030 160" fill="none" stroke="#f97316" stroke-width="2" opacity=".25"/>
         <circle r="2.5" fill="#f97316" opacity=".7"><animateMotion dur="1.6s" repeatCount="indefinite" path="M 1000 100 L 1030 140"/><animate attributeName="opacity" values="0;.8;0" dur="1.6s" repeatCount="indefinite"/></circle>
-        <path d="M 1080 150 L 1100 150" fill="none" stroke="#f97316" stroke-width="2" opacity=".25"/>
         <rect x="335" y="30" width="190" height="210" rx="12" fill="#1e3a5f" opacity=".15" stroke="#3b82f6" stroke-width="1" stroke-opacity=".3"/>
         <text x="430" y="50" text-anchor="middle" fill="#60a5fa" font-size="9" font-weight="700" letter-spacing=".1em" opacity=".6" font-family="system-ui">TOOL ORCHESTRATION</text>
         <rect x="585" y="30" width="180" height="210" rx="12" fill="#3b1f5e" opacity=".12" stroke="#8b5cf6" stroke-width="1" stroke-opacity=".3"/>
@@ -176,15 +175,25 @@ a{color:var(--accent);text-decoration:none}
         <g style="cursor:pointer" onclick="toggleDetail(5)"><rect x="605" y="65" width="140" height="30" rx="7" fill="url(#gr-purple)" stroke="#a78bfa" stroke-width="1" opacity=".9"/><text x="675" y="84" text-anchor="middle" fill="white" font-size="10" font-weight="600" font-family="system-ui">Working Memory</text></g>
         <g style="cursor:pointer" onclick="toggleDetail(5)"><rect x="615" y="110" width="120" height="28" rx="6" fill="#3b1f5e" stroke="#8b5cf6" stroke-width="1" opacity=".8"/><text x="675" y="128" text-anchor="middle" fill="#c4b5fd" font-size="8" font-family="system-ui">Summarizer (LLM)</text></g>
         <g style="cursor:pointer" onclick="toggleDetail(5)"><rect x="635" y="155" width="80" height="28" rx="6" fill="#3b1f5e" stroke="#8b5cf6" stroke-width="1" opacity=".8"/><text x="675" y="173" text-anchor="middle" fill="#c4b5fd" font-size="8" font-family="system-ui">Redis</text></g>
-        <text x="757" y="100" fill="#a78bfa" font-size="8" opacity=".5" font-family="system-ui">overflow</text>
+        <text x="690" y="60" fill="#a78bfa" font-size="7" opacity=".4" font-family="system-ui">evicted turns</text>
         <path d="M 675 95 L 675 110" fill="none" stroke="#8b5cf6" stroke-width="1" opacity=".4"/>
         <path d="M 675 138 L 675 155" fill="none" stroke="#8b5cf6" stroke-width="1" opacity=".4"/>
         <g style="cursor:pointer" onclick="toggleDetail(2)"><rect x="810" y="130" width="60" height="40" rx="8" fill="url(#gr-green)" stroke="#4ade80" stroke-width="1" opacity=".9"/><text x="840" y="148" text-anchor="middle" fill="white" font-size="8" font-weight="600" font-family="system-ui">Context</text><text x="840" y="161" text-anchor="middle" fill="#bbf7d0" font-size="7.5" font-family="system-ui">Assembly</text></g>
         <g style="cursor:pointer" onclick="toggleDetail(6)"><rect x="910" y="80" width="90" height="35" rx="8" fill="url(#gr-blue)" stroke="#60a5fa" stroke-width="1.5" opacity=".9"/><text x="955" y="95" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="system-ui">OSS</text><text x="955" y="108" text-anchor="middle" fill="#bfdbfe" font-size="7.5" font-family="system-ui">Qwen 0.5B</text></g>
         <g style="cursor:pointer" onclick="toggleDetail(6)"><rect x="910" y="185" width="90" height="35" rx="8" fill="url(#gr-purple)" stroke="#a78bfa" stroke-width="1.5" opacity=".9"/><text x="955" y="200" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="system-ui">Frontier</text><text x="955" y="213" text-anchor="middle" fill="#ddd6fe" font-size="7.5" font-family="system-ui">GPT-4.1</text></g>
         <g style="cursor:pointer" onclick="toggleDetail(3)"><rect x="1025" y="130" width="55" height="40" rx="8" fill="url(#gr-orange)" stroke="#fbbf24" stroke-width="1" opacity=".9"/><text x="1052" y="148" text-anchor="middle" fill="white" font-size="7.5" font-weight="600" font-family="system-ui">Output</text><text x="1052" y="160" text-anchor="middle" fill="#fef3c7" font-size="7" font-family="system-ui">Guard</text></g>
-        <text x="138" y="143" fill="#4ade80" font-size="7.5" opacity=".7" font-family="system-ui">pass</text>
-        <text x="195" y="230" fill="#f87171" font-size="7.5" opacity=".5" font-family="system-ui">blocked</text>
+        <!-- Edge: OutGuard → Observability -->
+        <path d="M 1080 150 L 1110 150" fill="none" stroke="#f97316" stroke-width="2" opacity=".25"/>
+        <circle r="2.5" fill="#f97316" opacity=".7"><animateMotion dur="1s" repeatCount="indefinite" path="M 1080 150 L 1110 150"/><animate attributeName="opacity" values="0;.8;0" dur="1s" repeatCount="indefinite"/></circle>
+        <!-- NODE: Observability -->
+        <g style="cursor:pointer" onclick="toggleDetail(4)"><rect x="1110" y="130" width="70" height="40" rx="8" fill="url(#gr-orange)" stroke="#fbbf24" stroke-width="1" opacity=".8"/><text x="1145" y="148" text-anchor="middle" fill="white" font-size="7" font-weight="600" font-family="system-ui">Observ-</text><text x="1145" y="159" text-anchor="middle" fill="#fef3c7" font-size="7" font-family="system-ui">ability</text></g>
+        <!-- Edge: Observability → Response -->
+        <path d="M 1180 150 L 1205 150" fill="none" stroke="#22c55e" stroke-width="2" opacity=".25"/>
+        <circle r="2.5" fill="#22c55e" opacity=".7"><animateMotion dur="1s" repeatCount="indefinite" path="M 1180 150 L 1205 150"/><animate attributeName="opacity" values="0;.8;0" dur="1s" repeatCount="indefinite"/></circle>
+        <!-- NODE: Response -->
+        <g><ellipse cx="1230" cy="150" rx="28" ry="18" fill="url(#gr-green)" stroke="#4ade80" stroke-width="1.5" opacity=".9"/><text x="1230" y="154" text-anchor="middle" fill="white" font-size="8" font-weight="700" font-family="system-ui">Done</text></g>
+        <text x="120" y="143" fill="#4ade80" font-size="8" opacity=".6" font-family="system-ui">safe</text>
+        <text x="225" y="218" fill="#f87171" font-size="8" opacity=".5" font-family="system-ui">blocked</text>
       </svg>
     </div>
   </div>
