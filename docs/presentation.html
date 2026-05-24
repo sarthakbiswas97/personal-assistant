@@ -75,11 +75,13 @@ a{color:var(--accent);text-decoration:none}
 .slide.active .a.sc-a{animation-name:fadeInScale}
 .slide.active .a.d1{animation-delay:.12s}.slide.active .a.d2{animation-delay:.25s}.slide.active .a.d3{animation-delay:.38s}.slide.active .a.d4{animation-delay:.5s}
 
-/* Component buttons */
-.comp-btn{background:var(--surface);border:1px solid var(--surface2);color:var(--text);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:500;transition:all .25s;font-family:inherit}
-.comp-btn:hover,.comp-btn.active{border-color:var(--accent);background:var(--surface2);box-shadow:0 2px 12px rgba(59,130,246,.15)}
-/* Mermaid */
-.mermaid{margin:0 auto}.mermaid svg{width:100%!important;height:auto!important;min-width:1000px}
+/* Arch detail */
+#arch-detail{transition:all .3s}
+.dp h3{font-size:1rem;margin-bottom:.5rem;color:var(--accent);text-align:left}
+.dp p{font-size:.82rem;text-align:left;max-width:none}
+.d-row{display:flex;gap:.7rem;flex-wrap:wrap;margin:.4rem 0}
+.d-card{flex:1;min-width:170px;background:var(--bg);border-radius:7px;padding:.6rem;border:1px solid var(--surface2);text-align:left}
+.d-card h4{font-size:.75rem;font-weight:600;margin-bottom:.2rem}.d-card p{font-size:.7rem;margin:0;max-width:none}
 /* Detail cards */
 .d-row{display:flex;gap:.8rem;flex-wrap:wrap;margin:.5rem 0}
 .d-card{flex:1;min-width:180px;background:var(--bg);border-radius:8px;padding:.7rem;border:1px solid var(--surface2);text-align:left}
@@ -128,53 +130,162 @@ a{color:var(--accent);text-decoration:none}
 </div></div>
 
 <!-- 4: INTERACTIVE ARCHITECTURE -->
-<div class="slide" data-slide="3" style="padding:1rem 2rem;justify-content:flex-start;padding-top:1.5rem">
-  <h2 class="a" style="margin-bottom:.2rem">System Architecture</h2>
-  <p class="a d1" style="font-size:.75rem;margin-bottom:.4rem">Click any node in the diagram to explore its internals</p>
+<div class="slide" data-slide="3" style="padding:.8rem 1.5rem;justify-content:flex-start;padding-top:1.2rem">
+  <h2 class="a" style="margin-bottom:.15rem;font-size:1.8rem">System Architecture</h2>
+  <p class="a d1" style="font-size:.72rem;margin-bottom:.3rem">Click any node to explore its internals &middot; Animated flow shows request path</p>
 
   <div class="a d2" style="width:100%;flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden">
-    <!-- Mermaid diagram -->
-    <div id="arch-diagram" style="overflow-x:auto;flex-shrink:0;transition:max-height .4s;max-height:45vh">
-      <div class="mermaid" style="min-width:1000px">
-flowchart LR
-    User([User]) --> Guard{Input\nGuardrails}
-    Guard -->|blocked| Refuse([Refusal])
-    Guard -->|pass| Tools
-    subgraph Tools[Tool Orchestration]
-        direction TB
-        Router[Hybrid Router] --> WS[Web Search]
-        Router --> Wiki[Wikipedia]
-        Router --> Calc[Calculator]
-    end
-    Tools --> Mem
-    subgraph Mem[Context Management]
-        direction TB
-        WM[Working Memory] -->|overflow| Sum[Summarizer]
-        Sum --> Redis[(Redis)]
-    end
-    Mem --> Ctx[Context\nAssembly]
-    Ctx --> OSS[OSS\nQwen 0.5B]
-    Ctx --> Front[Frontier\nGPT-4.1]
-    OSS --> OG{Output\nGuard}
-    Front --> OG
-    OG --> Obs[Observability]
-    Obs --> Resp([Response])
-      </div>
-    </div>
+    <!-- SVG Architecture Diagram -->
+    <div id="arch-diagram" style="overflow-x:auto;flex-shrink:0;transition:max-height .4s;max-height:52vh;border-radius:10px;background:#0a0a12;border:1px solid var(--surface2);position:relative">
+      <svg id="arch-svg" viewBox="-10 -5 1120 310" style="width:100%;height:auto;min-height:280px;min-width:900px;display:block">
+        <defs>
+          <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r=".6" fill="#1e293b"/></pattern>
+          <filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <linearGradient id="gr-red" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#991b1b"/></linearGradient>
+          <linearGradient id="gr-blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#1e40af"/></linearGradient>
+          <linearGradient id="gr-purple" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#5b21b6"/></linearGradient>
+          <linearGradient id="gr-green" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#059669"/><stop offset="100%" stop-color="#047857"/></linearGradient>
+          <linearGradient id="gr-orange" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#d97706"/><stop offset="100%" stop-color="#b45309"/></linearGradient>
+          <linearGradient id="gr-hub" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#3b82f6"><animate attributeName="stop-color" values="#3b82f6;#8b5cf6;#3b82f6" dur="4s" repeatCount="indefinite"/></stop>
+            <stop offset="100%" stop-color="#6366f1"><animate attributeName="stop-color" values="#6366f1;#3b82f6;#6366f1" dur="4s" repeatCount="indefinite"/></stop>
+          </linearGradient>
+          <linearGradient id="shimmer" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="rgba(255,255,255,0)"/><stop offset="50%" stop-color="rgba(255,255,255,.12)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+            <animateTransform attributeName="gradientTransform" type="translate" from="-1 0" to="1 0" dur="2.5s" repeatCount="indefinite"/>
+          </linearGradient>
+        </defs>
+        <rect x="-10" y="-5" width="1120" height="310" fill="url(#dots)"/>
 
-    <!-- Component buttons -->
-    <div style="display:flex;gap:.4rem;flex-wrap:wrap;justify-content:center;margin:.5rem 0">
-      <button class="comp-btn" onclick="toggleDetail(0)">Input Guardrails</button>
-      <button class="comp-btn" onclick="toggleDetail(1)">Tool Orchestration</button>
-      <button class="comp-btn" onclick="toggleDetail(5)">Context Management</button>
-      <button class="comp-btn" onclick="toggleDetail(6)">Model Backends</button>
-      <button class="comp-btn" onclick="toggleDetail(3)">Output Guardrails</button>
-      <button class="comp-btn" onclick="toggleDetail(4)">Observability</button>
-      <button class="comp-btn" onclick="toggleDetail(2)">Evaluation</button>
+        <!-- EDGES (static lines + animated dots) -->
+        <!-- User → Guard -->
+        <path id="e1" d="M 70 150 L 150 150" fill="none" stroke="#ef4444" stroke-width="2" opacity=".25"/>
+        <circle r="3" fill="#ef4444" opacity=".8"><animateMotion dur="2s" repeatCount="indefinite" path="M 70 150 L 150 150"/><animate attributeName="opacity" values="0;.9;0" dur="2s" repeatCount="indefinite"/></circle>
+        <!-- Guard → Tools -->
+        <path id="e2" d="M 270 150 C 300 150, 310 110, 340 110" fill="none" stroke="#3b82f6" stroke-width="2" opacity=".25"/>
+        <circle r="3" fill="#3b82f6" opacity=".8"><animateMotion dur="2s" repeatCount="indefinite" path="M 270 150 C 300 150, 310 110, 340 110"/><animate attributeName="opacity" values="0;.9;0" dur="2s" repeatCount="indefinite"/></circle>
+        <!-- Guard → Refused -->
+        <path d="M 210 180 L 210 240" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4 3" opacity=".3"/>
+        <text x="210" y="262" text-anchor="middle" fill="#ef4444" font-size="9" opacity=".5" font-family="system-ui">Refused</text>
+        <!-- Tools → Memory -->
+        <path id="e3" d="M 520 110 C 550 110, 560 110, 590 110" fill="none" stroke="#8b5cf6" stroke-width="2" opacity=".25"/>
+        <circle r="3" fill="#8b5cf6" opacity=".8"><animateMotion dur="1.8s" repeatCount="indefinite" path="M 520 110 C 550 110, 560 110, 590 110"/><animate attributeName="opacity" values="0;.9;0" dur="1.8s" repeatCount="indefinite"/></circle>
+        <!-- Memory → Assembly -->
+        <path id="e4" d="M 760 110 L 810 150" fill="none" stroke="#22c55e" stroke-width="2" opacity=".25"/>
+        <circle r="3" fill="#22c55e" opacity=".8"><animateMotion dur="1.5s" repeatCount="indefinite" path="M 760 110 L 810 150"/><animate attributeName="opacity" values="0;.9;0" dur="1.5s" repeatCount="indefinite"/></circle>
+        <!-- Assembly → OSS -->
+        <path id="e5a" d="M 870 140 L 910 100" fill="none" stroke="#22c55e" stroke-width="2" opacity=".25"/>
+        <circle r="2.5" fill="#22c55e" opacity=".7"><animateMotion dur="1.2s" repeatCount="indefinite" path="M 870 140 L 910 100"/><animate attributeName="opacity" values="0;.8;0" dur="1.2s" repeatCount="indefinite"/></circle>
+        <!-- Assembly → Frontier -->
+        <path id="e5b" d="M 870 160 L 910 200" fill="none" stroke="#22c55e" stroke-width="2" opacity=".25"/>
+        <circle r="2.5" fill="#22c55e" opacity=".7"><animateMotion dur="1.4s" repeatCount="indefinite" path="M 870 160 L 910 200"/><animate attributeName="opacity" values="0;.8;0" dur="1.4s" repeatCount="indefinite"/></circle>
+        <!-- OSS → OutGuard -->
+        <path d="M 1000 100 L 1030 140" fill="none" stroke="#f97316" stroke-width="2" opacity=".25"/>
+        <!-- Frontier → OutGuard -->
+        <path d="M 1000 200 L 1030 160" fill="none" stroke="#f97316" stroke-width="2" opacity=".25"/>
+        <circle r="2.5" fill="#f97316" opacity=".7"><animateMotion dur="1.6s" repeatCount="indefinite" path="M 1000 100 L 1030 140"/><animate attributeName="opacity" values="0;.8;0" dur="1.6s" repeatCount="indefinite"/></circle>
+        <!-- OutGuard → Response -->
+        <path id="e7" d="M 1080 150 L 1100 150" fill="none" stroke="#f97316" stroke-width="2" opacity=".25"/>
+
+        <!-- SUBGROUP: Tool Orchestration -->
+        <rect x="335" y="30" width="190" height="210" rx="12" fill="#1e3a5f" opacity=".15" stroke="#3b82f6" stroke-width="1" stroke-opacity=".3"/>
+        <text x="430" y="50" text-anchor="middle" fill="#60a5fa" font-size="9" font-weight="700" letter-spacing=".1em" opacity=".6" font-family="system-ui">TOOL ORCHESTRATION</text>
+
+        <!-- SUBGROUP: Context Management -->
+        <rect x="585" y="30" width="180" height="210" rx="12" fill="#3b1f5e" opacity=".12" stroke="#8b5cf6" stroke-width="1" stroke-opacity=".3"/>
+        <text x="675" y="50" text-anchor="middle" fill="#a78bfa" font-size="9" font-weight="700" letter-spacing=".1em" opacity=".6" font-family="system-ui">CONTEXT MANAGEMENT</text>
+
+        <!-- NODE: User -->
+        <g style="cursor:pointer" onclick="toggleDetail(2)">
+          <ellipse cx="40" cy="150" rx="35" ry="22" fill="url(#gr-hub)" stroke="#60a5fa" stroke-width="1.5" opacity=".9"/>
+          <ellipse cx="40" cy="150" rx="35" ry="22" fill="url(#shimmer)"/>
+          <text x="40" y="153" text-anchor="middle" fill="white" font-size="11" font-weight="700" font-family="system-ui">User</text>
+        </g>
+
+        <!-- NODE: Input Guardrails -->
+        <g style="cursor:pointer" onclick="toggleDetail(0)">
+          <rect x="150" y="130" width="120" height="40" rx="8" fill="url(#gr-red)" stroke="#f87171" stroke-width="1" opacity=".9"/>
+          <text x="210" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="600" font-family="system-ui">Input</text>
+          <text x="210" y="160" text-anchor="middle" fill="#fca5a5" font-size="9" font-family="system-ui">Guardrails</text>
+        </g>
+
+        <!-- NODE: Hybrid Router -->
+        <g style="cursor:pointer" onclick="toggleDetail(1)">
+          <rect x="355" y="65" width="150" height="35" rx="8" fill="url(#gr-blue)" stroke="#60a5fa" stroke-width="1" opacity=".9"/>
+          <text x="430" y="87" text-anchor="middle" fill="white" font-size="10" font-weight="600" font-family="system-ui">Hybrid Router</text>
+        </g>
+        <!-- Tools sub-nodes -->
+        <g style="cursor:pointer" onclick="toggleDetail(1)">
+          <rect x="350" y="115" width="50" height="28" rx="6" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1" opacity=".85"/>
+          <text x="375" y="133" text-anchor="middle" fill="#93c5fd" font-size="8" font-family="system-ui">Search</text>
+        </g>
+        <g style="cursor:pointer" onclick="toggleDetail(1)">
+          <rect x="410" y="115" width="40" height="28" rx="6" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1" opacity=".85"/>
+          <text x="430" y="133" text-anchor="middle" fill="#93c5fd" font-size="8" font-family="system-ui">Wiki</text>
+        </g>
+        <g style="cursor:pointer" onclick="toggleDetail(1)">
+          <rect x="460" y="115" width="40" height="28" rx="6" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1" opacity=".85"/>
+          <text x="480" y="133" text-anchor="middle" fill="#93c5fd" font-size="8" font-family="system-ui">Calc</text>
+        </g>
+        <!-- Chain Validator -->
+        <g style="cursor:pointer" onclick="toggleDetail(1)">
+          <rect x="370" y="160" width="120" height="30" rx="6" fill="#1e3a5f" stroke="#60a5fa" stroke-width="1" stroke-dasharray="3 2" opacity=".7"/>
+          <text x="430" y="179" text-anchor="middle" fill="#93c5fd" font-size="8" font-family="system-ui">Chain Validator (LLM)</text>
+        </g>
+
+        <!-- NODE: Working Memory -->
+        <g style="cursor:pointer" onclick="toggleDetail(5)">
+          <rect x="605" y="65" width="140" height="30" rx="7" fill="url(#gr-purple)" stroke="#a78bfa" stroke-width="1" opacity=".9"/>
+          <text x="675" y="84" text-anchor="middle" fill="white" font-size="10" font-weight="600" font-family="system-ui">Working Memory</text>
+        </g>
+        <g style="cursor:pointer" onclick="toggleDetail(5)">
+          <rect x="615" y="110" width="120" height="28" rx="6" fill="#3b1f5e" stroke="#8b5cf6" stroke-width="1" opacity=".8"/>
+          <text x="675" y="128" text-anchor="middle" fill="#c4b5fd" font-size="8" font-family="system-ui">Summarizer (LLM)</text>
+        </g>
+        <g style="cursor:pointer" onclick="toggleDetail(5)">
+          <rect x="635" y="155" width="80" height="28" rx="6" fill="#3b1f5e" stroke="#8b5cf6" stroke-width="1" opacity=".8"/>
+          <text x="675" y="173" text-anchor="middle" fill="#c4b5fd" font-size="8" font-family="system-ui">Redis</text>
+        </g>
+        <!-- overflow arrow -->
+        <text x="757" y="100" fill="#a78bfa" font-size="8" opacity=".5" font-family="system-ui">overflow</text>
+        <path d="M 675 95 L 675 110" fill="none" stroke="#8b5cf6" stroke-width="1" opacity=".4"/>
+        <path d="M 675 138 L 675 155" fill="none" stroke="#8b5cf6" stroke-width="1" opacity=".4"/>
+
+        <!-- NODE: Context Assembly -->
+        <g style="cursor:pointer" onclick="toggleDetail(2)">
+          <rect x="810" y="130" width="60" height="40" rx="8" fill="url(#gr-green)" stroke="#4ade80" stroke-width="1" opacity=".9"/>
+          <text x="840" y="148" text-anchor="middle" fill="white" font-size="8" font-weight="600" font-family="system-ui">Context</text>
+          <text x="840" y="161" text-anchor="middle" fill="#bbf7d0" font-size="7.5" font-family="system-ui">Assembly</text>
+        </g>
+
+        <!-- NODE: OSS -->
+        <g style="cursor:pointer" onclick="toggleDetail(6)">
+          <rect x="910" y="80" width="90" height="35" rx="8" fill="url(#gr-blue)" stroke="#60a5fa" stroke-width="1.5" opacity=".9"/>
+          <text x="955" y="95" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="system-ui">OSS</text>
+          <text x="955" y="108" text-anchor="middle" fill="#bfdbfe" font-size="7.5" font-family="system-ui">Qwen 0.5B</text>
+        </g>
+
+        <!-- NODE: Frontier -->
+        <g style="cursor:pointer" onclick="toggleDetail(6)">
+          <rect x="910" y="185" width="90" height="35" rx="8" fill="url(#gr-purple)" stroke="#a78bfa" stroke-width="1.5" opacity=".9"/>
+          <text x="955" y="200" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="system-ui">Frontier</text>
+          <text x="955" y="213" text-anchor="middle" fill="#ddd6fe" font-size="7.5" font-family="system-ui">GPT-4.1</text>
+        </g>
+
+        <!-- NODE: Output Guard -->
+        <g style="cursor:pointer" onclick="toggleDetail(3)">
+          <rect x="1025" y="130" width="55" height="40" rx="8" fill="url(#gr-orange)" stroke="#fbbf24" stroke-width="1" opacity=".9"/>
+          <text x="1052" y="148" text-anchor="middle" fill="white" font-size="7.5" font-weight="600" font-family="system-ui">Output</text>
+          <text x="1052" y="160" text-anchor="middle" fill="#fef3c7" font-size="7" font-family="system-ui">Guard</text>
+        </g>
+
+        <!-- Labels: pass/blocked -->
+        <text x="138" y="143" fill="#4ade80" font-size="7.5" opacity=".7" font-family="system-ui">pass</text>
+        <text x="195" y="230" fill="#f87171" font-size="7.5" opacity=".5" font-family="system-ui">blocked</text>
+      </svg>
     </div>
 
     <!-- Detail panel -->
-    <div id="arch-detail" style="display:none;width:100%;max-width:1050px;margin:0 auto;background:var(--surface);border:1px solid var(--surface2);border-radius:10px;padding:1.2rem 1.5rem;max-height:35vh;overflow-y:auto;position:relative">
+    <div id="arch-detail" style="display:none;width:100%;max-width:1050px;margin:.4rem auto 0;background:var(--surface);border:1px solid var(--surface2);border-radius:10px;padding:1rem 1.3rem;max-height:38vh;overflow-y:auto;position:relative">
       <button onclick="closeDetail()" style="position:absolute;top:8px;right:10px;background:var(--surface2);border:none;color:var(--muted);padding:3px 10px;border-radius:5px;cursor:pointer;font-size:.7rem">Close</button>
 
       <!-- 0: Input Guardrails -->
