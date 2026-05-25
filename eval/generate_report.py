@@ -218,13 +218,12 @@ def _generate_pdf(
     with PdfPages(str(pdf_path)) as pdf:
         fig = plt.figure(figsize=(15, 9))
         gs = fig.add_gridspec(3, 2, hspace=0.55, wspace=0.3,
-                              top=0.88, bottom=0.06, left=0.06, right=0.96)
+                              top=0.87, bottom=0.06, left=0.06, right=0.96)
 
         fig.suptitle("AI Assistant Evaluation: OSS vs Frontier",
-                     fontsize=16, fontweight="bold", y=0.96)
-        fig.text(0.06, 0.91,
-                 "50-prompt stress test across 7 categories. "
-                 "Scored 1-5 by LLM-as-judge on 5 dimensions. Higher = better.",
+                     fontsize=16, fontweight="bold", y=0.97)
+        fig.text(0.06, 0.93,
+                 "50-prompt stress test | 7 categories | 5 scoring dimensions | LLM-as-judge | Higher = better",
                  fontsize=8, color="gray")
 
         # -- Row 1 Left: Quality Scores Table --
