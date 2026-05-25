@@ -200,179 +200,166 @@ def _plot_latency_comparison(scores: dict[str, ModelScores], output_dir: Path) -
 def _generate_pdf(
     scores: dict[str, ModelScores], output_dir: Path, repo_url: str = ""
 ) -> Path:
-    """Generate a 1-page evaluation PDF with summary, charts, and recommendations."""
+    """Generate a 1-page evaluation PDF."""
     from matplotlib.backends.backend_pdf import PdfPages
 
     pdf_path = output_dir / "evaluation_report.pdf"
     models = list(scores.keys())
+    colors = ["#4472C4", "#ED7D31"]
+    short_names = [m.split("(")[0].strip() for m in models]
+
+    # Clean category names
+    cat_name_map = {
+        "bias": "Bias", "context": "Context", "context_follow_up": "Follow-up",
+        "guardrail_stress": "Guardrails", "pure_factual": "Factual",
+        "reasoning": "Reasoning", "tool_factual": "Tools",
+    }
 
     with PdfPages(str(pdf_path)) as pdf:
-        fig = plt.figure(figsize=(14, 8.5))  # wide landscape
-        gs = fig.add_gridspec(3, 3, hspace=0.5, wspace=0.4,
-                              top=0.88, bottom=0.06, left=0.05, right=0.95)
+        fig = plt.figure(figsize=(15, 9))
+        gs = fig.add_gridspec(3, 2, hspace=0.55, wspace=0.3,
+                              top=0.88, bottom=0.06, left=0.06, right=0.96)
 
-        # -- Title --
         fig.suptitle("AI Assistant Evaluation: OSS vs Frontier",
                      fontsize=16, fontweight="bold", y=0.96)
         fig.text(0.06, 0.91,
-                 "Methodology: 50-prompt stress test (7 categories) evaluated by LLM-as-judge. "
-                 "Scores 1-5 (higher = better).",
+                 "50-prompt stress test across 7 categories. "
+                 "Scored 1-5 by LLM-as-judge on 5 dimensions. Higher = better.",
                  fontsize=8, color="gray")
 
-        # -- Quality Scores Table (top-left) --
+        # -- Row 1 Left: Quality Scores Table --
         ax_table = fig.add_subplot(gs[0, 0])
         ax_table.axis("off")
-
         table_data = []
         for m in models:
             s = scores[m]
-            short_name = m.split("(")[0].strip() if "(" in m else m
+            sn = m.split("(")[0].strip()
             table_data.append([
-                short_name,
-                f"{s.avg_hallucination:.1f}",
-                f"{s.avg_safety:.1f}",
-                f"{s.avg_bias:.1f}",
-                f"{s.avg_grounding:.1f}",
-                f"{s.avg_coherence:.1f}",
-                f"{s.guardrail_block_rate:.0%}",
+                sn, f"{s.avg_hallucination:.1f}", f"{s.avg_safety:.1f}",
+                f"{s.avg_bias:.1f}", f"{s.avg_grounding:.1f}",
+                f"{s.avg_coherence:.1f}", f"{s.guardrail_block_rate:.0%}",
             ])
-
-        col_labels = ["Model", "Halluc", "Safety", "Bias", "Ground", "Coher", "Block"]
-        table = ax_table.table(
-            cellText=table_data, colLabels=col_labels,
-            loc="center", cellLoc="center",
-        )
-        table.auto_set_font_size(False)
-        table.set_fontsize(7)
-        table.scale(1, 1.4)
+        col_labels = ["Model", "Halluc.", "Safety", "Bias", "Ground.", "Coher.", "Blocked"]
+        tbl = ax_table.table(cellText=table_data, colLabels=col_labels,
+                             loc="center", cellLoc="center")
+        tbl.auto_set_font_size(False)
+        tbl.set_fontsize(8)
+        tbl.scale(1, 1.5)
         for j in range(len(col_labels)):
-            table[0, j].set_facecolor("#4472C4")
-            table[0, j].set_text_props(color="white", fontweight="bold")
-        ax_table.set_title("Quality Scores (1-5)", fontsize=10, fontweight="bold", pad=12)
+            tbl[0, j].set_facecolor("#4472C4")
+            tbl[0, j].set_text_props(color="white", fontweight="bold")
+        ax_table.set_title("Quality Scores (1-5 scale)", fontsize=11, fontweight="bold", pad=14)
 
-        # -- Overall Comparison (top-center+right) --
-        ax_overall = fig.add_subplot(gs[0, 1:])
-        metric_labels = ["Hallucination", "Safety", "Bias"]
-        x = np.arange(len(metric_labels))
+        # -- Row 1 Right: All 5 Dimensions Bar Chart --
+        ax_dims = fig.add_subplot(gs[0, 1])
+        dim_labels = ["Halluc.", "Safety", "Bias", "Ground.", "Coher."]
+        x = np.arange(len(dim_labels))
         width = 0.35
-        colors = ["#4472C4", "#ED7D31"]
-
         for i, m in enumerate(models):
             s = scores[m]
-            vals = [s.avg_hallucination, s.avg_safety, s.avg_bias]
-            short = m.split("(")[0].strip()
-            offset = (i - (len(models) - 1) / 2) * width
-            bars = ax_overall.bar(x + offset, vals, width, label=short, color=colors[i])
-            ax_overall.bar_label(bars, fmt="%.2f", fontsize=7)
+            vals = [s.avg_hallucination, s.avg_safety, s.avg_bias,
+                    s.avg_grounding, s.avg_coherence]
+            offset = (i - 0.5) * width
+            bars = ax_dims.bar(x + offset, vals, width,
+                               label=short_names[i], color=colors[i])
+            ax_dims.bar_label(bars, fmt="%.1f", fontsize=7, padding=2)
+        ax_dims.set_ylabel("Score (1-5)", fontsize=9)
+        ax_dims.set_xticks(x)
+        ax_dims.set_xticklabels(dim_labels, fontsize=9)
+        ax_dims.set_ylim(0, 5.8)
+        ax_dims.legend(fontsize=8)
+        ax_dims.set_title("Overall Comparison (all 5 dimensions)",
+                          fontsize=11, fontweight="bold")
 
-        ax_overall.set_ylabel("Score (1-5)", fontsize=8)
-        ax_overall.set_xticks(x)
-        ax_overall.set_xticklabels(metric_labels, fontsize=8)
-        ax_overall.set_ylim(0, 5.5)
-        ax_overall.legend(fontsize=7)
-        ax_overall.set_title("Overall Comparison", fontsize=10, fontweight="bold")
-
-        # -- Latency Percentiles (middle row) --
-        ax_lat_table = fig.add_subplot(gs[1, 0])
-        ax_lat_table.axis("off")
-        lat_data = []
-        for m in models:
-            s = scores[m]
-            short = m.split("(")[0].strip()
-            lat_data.append([short, f"{s.avg_latency_ms:.0f}", f"{s.p50_latency_ms:.0f}", f"{s.p95_latency_ms:.0f}", f"{s.p99_latency_ms:.0f}"])
-        lat_labels = ["Model", "Avg (ms)", "P50", "P95", "P99"]
-        lat_table = ax_lat_table.table(cellText=lat_data, colLabels=lat_labels, loc="center", cellLoc="center")
-        lat_table.auto_set_font_size(False)
-        lat_table.set_fontsize(8)
-        lat_table.scale(1, 1.4)
-        for j in range(len(lat_labels)):
-            lat_table[0, j].set_facecolor("#E67E22")
-            lat_table[0, j].set_text_props(color="white", fontweight="bold")
-        ax_lat_table.set_title("Latency Percentiles", fontsize=10, fontweight="bold", pad=12)
-
-        # -- Category scores heatmap (middle row, cols 1-2) --
-        ax_cat = fig.add_subplot(gs[1, 1:])
-        categories = sorted({cat for s in scores.values() for cat in s.category_scores})[:8]
-        cat_labels = [c.replace("_", "\n")[:12] for c in categories]
-        model_short = [m.split("(")[0].strip() for m in models]
-        # Build heatmap data: avg of all 5 dimensions per category per model
-        heat_data = []
-        for m in models:
-            row = []
+        # -- Row 2 Left: Per-Category Grouped Bars --
+        ax_cat = fig.add_subplot(gs[1, 0])
+        categories = sorted({c for s in scores.values() for c in s.category_scores})
+        clean_cats = [cat_name_map.get(c, c) for c in categories]
+        x_cat = np.arange(len(categories))
+        width_cat = 0.35
+        for i, m in enumerate(models):
+            vals = []
             for cat in categories:
                 cs = scores[m].category_scores.get(cat, {})
-                avg = np.mean([cs.get("hallucination", 3), cs.get("safety", 3), cs.get("bias", 3), cs.get("grounding", 3), cs.get("coherence", 3)])
-                row.append(avg)
-            heat_data.append(row)
-        ax_cat.imshow(heat_data, cmap="RdYlGn", vmin=1, vmax=5, aspect="auto")
-        ax_cat.set_xticks(range(len(categories)))
-        ax_cat.set_xticklabels(cat_labels, fontsize=6, rotation=45, ha="right")
-        ax_cat.set_yticks(range(len(models)))
-        ax_cat.set_yticklabels(model_short, fontsize=8)
-        for i in range(len(models)):
-            for j in range(len(categories)):
-                ax_cat.text(j, i, f"{heat_data[i][j]:.1f}", ha="center", va="center", fontsize=7, fontweight="bold")
-        ax_cat.set_title("Avg Score by Category (1-5)", fontsize=10, fontweight="bold")
+                avg = np.mean([
+                    cs.get("hallucination", 3), cs.get("safety", 3),
+                    cs.get("bias", 3), cs.get("grounding", 3),
+                    cs.get("coherence", 3),
+                ])
+                vals.append(avg)
+            offset = (i - 0.5) * width_cat
+            bars = ax_cat.bar(x_cat + offset, vals, width_cat,
+                              label=short_names[i], color=colors[i])
+            ax_cat.bar_label(bars, fmt="%.1f", fontsize=6, padding=1)
+        ax_cat.set_xticks(x_cat)
+        ax_cat.set_xticklabels(clean_cats, fontsize=8, rotation=30, ha="right")
+        ax_cat.set_ylabel("Avg Score (1-5)", fontsize=8)
+        ax_cat.set_ylim(0, 5.8)
+        ax_cat.legend(fontsize=7)
+        ax_cat.set_title("Score by Category (avg of 5 dimensions)",
+                          fontsize=11, fontweight="bold")
 
-        # -- Latency Comparison (bottom-left) --
-        ax_lat = fig.add_subplot(gs[2, 0])
-        latencies = [scores[m].avg_latency_ms for m in models]
-        short_names = [m.split("(")[0].strip() for m in models]
-        bars = ax_lat.barh(short_names, latencies, color=colors[:len(models)])
-        ax_lat.bar_label(bars, fmt="%.0f ms", fontsize=7)
-        ax_lat.set_xlabel("Avg Latency (ms)", fontsize=8)
-        ax_lat.set_title("Response Latency", fontsize=10, fontweight="bold")
+        # -- Row 2 Right: Latency Percentile Grouped Bars --
+        ax_lat = fig.add_subplot(gs[1, 1])
+        lat_labels = ["P50", "P95", "P99"]
+        x_lat = np.arange(len(lat_labels))
+        width_lat = 0.35
+        for i, m in enumerate(models):
+            s = scores[m]
+            vals = [s.p50_latency_ms / 1000, s.p95_latency_ms / 1000,
+                    s.p99_latency_ms / 1000]
+            offset = (i - 0.5) * width_lat
+            bars = ax_lat.bar(x_lat + offset, vals, width_lat,
+                              label=short_names[i], color=colors[i])
+            ax_lat.bar_label(bars, fmt="%.1fs", fontsize=7, padding=2)
+        ax_lat.set_xticks(x_lat)
+        ax_lat.set_xticklabels(lat_labels, fontsize=10)
+        ax_lat.set_ylabel("Latency (seconds)", fontsize=9)
+        ax_lat.legend(fontsize=8)
+        ax_lat.set_title("Latency Percentiles (lower = better)",
+                          fontsize=11, fontweight="bold")
 
-        # -- Key Findings & Recommendations (bottom-center+right) --
-        ax_text = fig.add_subplot(gs[2, 1:])
+        # -- Row 3: Key Findings & Recommendations (full width) --
+        ax_text = fig.add_subplot(gs[2, :])
         ax_text.axis("off")
 
-        # Build dynamic findings from scores
-        oss = next((s for m, s in scores.items() if "OSS" in m or "Qwen" in m), None)
-        frontier = next((s for m, s in scores.items() if "Frontier" in m or "gpt" in m.lower()), None)
+        oss = next((s for m, s in scores.items() if "OSS" in m), None)
+        frontier = next((s for m, s in scores.items() if "Frontier" in m), None)
 
         findings = []
         if oss and frontier:
+            g_gap = frontier.avg_grounding - oss.avg_grounding
             h_gap = frontier.avg_hallucination - oss.avg_hallucination
-            findings.append(
-                f"Frontier scores +{h_gap:.1f} on hallucination "
-                f"({frontier.avg_hallucination:.1f} vs {oss.avg_hallucination:.1f})."
-            )
-            speed = oss.avg_latency_ms / frontier.avg_latency_ms if frontier.avg_latency_ms > 0 else 0
-            findings.append(
-                f"OSS is {speed:.0f}x slower "
-                f"({oss.avg_latency_ms:.0f}ms vs {frontier.avg_latency_ms:.0f}ms)."
-            )
-            findings.append(
-                f"Guardrails block {oss.guardrail_block_rate:.0%} of prompts "
-                f"before reaching either model."
-            )
-            findings.append(
-                "Bias is the largest gap -- OSS lacks capacity "
-                "for nuanced stereotype handling."
-            )
+            speed = oss.p50_latency_ms / frontier.p50_latency_ms if frontier.p50_latency_ms > 0 else 0
+            findings = [
+                f"Grounding is the biggest gap (-{g_gap:.1f}): "
+                f"OSS fabricates when tools don't fire.",
+                f"Hallucination gap is -{h_gap:.1f} "
+                f"({oss.avg_hallucination:.1f} vs {frontier.avg_hallucination:.1f}).",
+                f"OSS is {speed:.0f}x slower at P50 "
+                f"({oss.p50_latency_ms/1000:.1f}s vs {frontier.p50_latency_ms/1000:.1f}s).",
+                f"Guardrails block {oss.guardrail_block_rate:.0%} of "
+                f"prompts identically before either model.",
+            ]
 
-        recommendations = [
-            "Use frontier models for production safety-critical applications.",
-            "OSS models are viable for cost-sensitive deployments with guardrails.",
-            "Invest in prompt engineering or fine-tuning to close the bias gap.",
-            "GPU deployment would reduce OSS latency by ~10x.",
+        recs = [
+            "Use frontier for safety-critical production.",
+            "OSS viable for cost-sensitive use with guardrails.",
+            "Tool use helps OSS most on grounding.",
+            "GPU would reduce OSS P50 by ~5-10x.",
         ]
 
-        text = "KEY FINDINGS\n"
-        for i, f in enumerate(findings, 1):
-            text += f"  {i}. {f}\n"
-        text += "\nRECOMMENDATIONS\n"
-        for i, r in enumerate(recommendations, 1):
-            text += f"  {i}. {r}\n"
+        left = "KEY FINDINGS\n" + "\n".join(f"  {i}. {f}" for i, f in enumerate(findings, 1))
+        right = "RECOMMENDATIONS\n" + "\n".join(f"  {i}. {r}" for i, r in enumerate(recs, 1))
 
-        if repo_url:
-            text += f"\nDetailed prompt/response data: {repo_url}/blob/main/eval/outputs/eval_results.json"
-
-        ax_text.text(0, 1, text, transform=ax_text.transAxes,
-                     fontsize=7.5, verticalalignment="top", fontfamily="monospace",
-                     linespacing=1.5, wrap=True)
-        ax_text.set_title("Findings & Recommendations", fontsize=10, fontweight="bold")
+        ax_text.text(0.02, 0.95, left, transform=ax_text.transAxes,
+                     fontsize=8, verticalalignment="top", fontfamily="monospace",
+                     linespacing=1.6)
+        ax_text.text(0.55, 0.95, right, transform=ax_text.transAxes,
+                     fontsize=8, verticalalignment="top", fontfamily="monospace",
+                     linespacing=1.6)
+        ax_text.set_title("Findings & Recommendations",
+                          fontsize=11, fontweight="bold")
 
         pdf.savefig(fig)
         plt.close(fig)
