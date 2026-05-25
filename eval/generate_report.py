@@ -266,8 +266,8 @@ def _generate_pdf(
         ax_dims.set_ylabel("Score (1-5)", fontsize=9)
         ax_dims.set_xticks(x)
         ax_dims.set_xticklabels(dim_labels, fontsize=9)
-        ax_dims.set_ylim(0, 5.8)
-        ax_dims.legend(fontsize=8)
+        ax_dims.set_ylim(0, 6.2)
+        ax_dims.legend(fontsize=8, loc="upper right")
         ax_dims.set_title("Overall Comparison (all 5 dimensions)",
                           fontsize=11, fontweight="bold")
 
